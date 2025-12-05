@@ -9,6 +9,10 @@ const { register: metricsRegister } = require('./utils/metrics');
 const healthRoutes = require('./routes/health.routes');
 const jobRoutes = require('./routes/job.routes');
 const workerRoutes = require('./routes/worker.routes');
+const oddsRoutes = require('./routes/odds.routes');
+const matchesRoutes = require('./routes/matches.routes');
+const credentialsRoutes = require('./routes/credentials.routes');
+const logsRoutes = require('./routes/logs.routes');
 
 async function createServer() {
   const app = express();
@@ -34,6 +38,10 @@ async function createServer() {
   app.use('/health', healthRoutes);
   app.use('/api/v1/jobs', jobRoutes);
   app.use('/api/v1/workers', workerRoutes);
+  app.use('/api/v1/odds', oddsRoutes);
+  app.use('/api/v1/matches', matchesRoutes);
+  app.use('/api/v1/credentials', credentialsRoutes);
+  app.use('/api/v1/logs', logsRoutes);
 
   // Prometheus metrics endpoint
   app.get('/metrics', async (req, res) => {

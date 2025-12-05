@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sportsbook Dashboard - Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>⚡ Sportsbook</h2>
+                <p>Admin Dashboard</p>
+            </div>
+            <nav class="nav">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="#workers" class="nav-item" data-page="workers">
+                    <span>🤖</span> Workers
+                </a>
+                <a href="#odds" class="nav-item" data-page="odds">
+                    <span>💰</span> Live Odds
+                </a>
+                <a href="#credentials" class="nav-item" data-page="credentials">
+                    <span>🔑</span> Credentials
+                </a>
+                <a href="#logs" class="nav-item" data-page="logs">
+                    <span>📝</span> Logs
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn btn-refresh" onclick="refreshCurrentPage()">🔄 Refresh</button>
+                    <span class="status-indicator online">● Online</span>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Active Workers</h3>
+                            <p class="stat-value" id="stat-workers">-</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Live Matches</h3>
+                            <p class="stat-value" id="stat-matches">-</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Odds</h3>
+                            <p class="stat-value" id="stat-odds">-</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Last Update</h3>
+                            <p class="stat-value" id="stat-update">-</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2>Worker Status</h2>
+                        <div id="worker-summary"></div>
+                    </div>
+                </div>
+
+                <!-- Workers Page -->
+                <div id="workers-page" class="page">
+                    <div class="page-actions">
+                        <input type="text" id="worker-search" placeholder="Search workers..." class="search-box">
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Worker Name</th>
+                                    <th>Sportsbook</th>
+                                    <th>Status</th>
+                                    <th>Last Heartbeat</th>
+                                    <th>Total Scrapes</th>
+                                    <th>Error Rate</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="workers-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Odds Page -->
+                <div id="odds-page" class="page">
+                    <div class="page-actions">
+                        <select id="odds-sportsbook" class="filter-select">
+                            <option value="">All Sportsbooks</option>
+                        </select>
+                        <select id="odds-league" class="filter-select">
+                            <option value="">All Leagues</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadOdds()">Apply Filter</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Match</th>
+                                    <th>League</th>
+                                    <th>Market</th>
+                                    <th>Home</th>
+                                    <th>Draw</th>
+                                    <th>Away</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="odds-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Credentials Page -->
+                <div id="credentials-page" class="page">
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="showAddCredentialModal()">+ Add Credential</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sportsbook</th>
+                                    <th>Username</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="credentials-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Logs Page -->
+                <div id="logs-page" class="page">
+                    <div class="page-actions">
+                        <select id="logs-level" class="filter-select">
+                            <option value="">All Levels</option>
+                            <option value="info">Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadLogs()">Apply Filter</button>
+                        <button class="btn btn-secondary" onclick="clearLogs()">Clear Display</button>
+                    </div>
+                    <div class="logs-container" id="logs-container"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Adding Credential -->
+    <div id="credential-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Add Sportsbook Credential</h2>
+            <form id="credential-form" onsubmit="submitCredential(event)">
+                <div class="form-group">
+                    <label>Sportsbook Name</label>
+                    <input type="text" name="sportsbook_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label>Login URL</label>
+                    <input type="url" name="login_url">
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
