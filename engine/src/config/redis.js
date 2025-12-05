@@ -8,16 +8,26 @@ let redisSub;
 
 async function connectRedis() {
   try {
-    const redisConfig = {
-      host: process.env.REDIS_HOST || 'redis',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-      maxRetriesPerRequest: 3
-    };
+    let redisConfig;
+    
+    // Check if REDIS_URL is provided (Docker/production)
+    if (process.env.REDIS_URL) {
+      logger.info('Using REDIS_URL for connection');
+      redisConfig = process.env.REDIS_URL;
+    } else {
+      // Fallback to individual config (local development)
+      logger.info('Using individual Redis config parameters');
+      redisConfig = {
+        host: process.env.REDIS_HOST || 'redis',
+        port: process.env.REDIS_PORT || 6379,
+        password: process.env.REDIS_PASSWORD,
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        maxRetriesPerRequest: 3
+      };
+    }
 
     // Main Redis client
     redisClient = new Redis(redisConfig);
@@ -27,7 +37,7 @@ async function connectRedis() {
     });
 
     redisClient.on('error', (err) => {
-      logger.error('Redis connection error:', err);
+      logger.error('Redis client error:', err);
     });
 
     redisClient.on('close', () => {
@@ -37,6 +47,15 @@ async function connectRedis() {
     // Pub/Sub clients
     redisPub = new Redis(redisConfig);
     redisSub = new Redis(redisConfig);
+    
+    // Add error handlers for pub/sub clients to prevent crashes
+    redisPub.on('error', (err) => {
+      logger.error('Redis pub client error:', err);
+    });
+    
+    redisSub.on('error', (err) => {
+      logger.error('Redis sub client error:', err);
+    });
 
     // Test connection
     await redisClient.ping();
