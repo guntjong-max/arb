@@ -13,6 +13,13 @@ let redisSub;
 function getRedisConfig() {
   const redisUrl = process.env.REDIS_URL;
   
+  // CRITICAL DEBUG: Log environment variables
+  console.log('\n=== REDIS CONFIG DEBUG ===');
+  console.log('REDIS_URL:', redisUrl || '(not set)');
+  console.log('REDIS_HOST:', process.env.REDIS_HOST || '(not set)');
+  console.log('REDIS_PORT:', process.env.REDIS_PORT || '(not set)');
+  console.log('REDIS_PASSWORD:', process.env.REDIS_PASSWORD ? '***SET***' : '(not set)');
+  
   let config = {
     retryStrategy: (times) => {
       const delay = Math.min(times * 100, 5000);
@@ -32,12 +39,23 @@ function getRedisConfig() {
       config.host = url.hostname;
       config.port = parseInt(url.port) || 6379;
       
+      // CRITICAL DEBUG: Show URL components
+      console.log('URL parsed components:');
+      console.log('  hostname:', url.hostname);
+      console.log('  port:', url.port);
+      console.log('  username:', JSON.stringify(url.username));
+      console.log('  password:', JSON.stringify(url.password));
+      
       // Extract password from URL (format: redis://:password@host or redis://user:password@host)
       if (url.password) {
         config.password = url.password;
+        console.log('  ✅ Password extracted from url.password:', config.password);
       } else if (url.username && !url.password) {
         // Handle format redis://:password@host where password is in username field
         config.password = url.username;
+        console.log('  ⚠️  Password extracted from url.username:', config.password);
+      } else {
+        console.log('  ❌ NO PASSWORD FOUND IN URL!');
       }
       
       // Extract database number if specified
@@ -48,10 +66,19 @@ function getRedisConfig() {
         }
       }
       
+      console.log('Final parsed config:', {
+        host: config.host,
+        port: config.port,
+        password: config.password ? `***${config.password.length} chars***` : null,
+        db: config.db || 0
+      });
+      console.log('=== END REDIS CONFIG DEBUG ===\n');
+      
       logger.info('Redis config parsed from REDIS_URL', {
         host: config.host,
         port: config.port,
         hasPassword: !!config.password,
+        passwordLength: config.password ? config.password.length : 0,
         db: config.db || 0
       });
     } catch (error) {
