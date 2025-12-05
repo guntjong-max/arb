@@ -150,6 +150,55 @@ services:
     networks:
       - arb-network
 
+  # Sportsbook Worker - Browser Automation (Node.js + Puppeteer)
+  sportsbook-worker:
+    build:
+      context: ./sportsbook-worker
+      dockerfile: Dockerfile
+    container_name: arb-sportsbook-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      WORKER_NAME: worker-bet365-1
+      SPORTSBOOK_NAME: Bet365
+      SCRAPE_INTERVAL: 15000
+      HEADLESS: 'true'
+      DATABASE_URL: postgresql://arbitrage_user:${DB_PASSWORD}@postgres:5432/arbitrage_bot
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY}
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      engine:
+        condition: service_healthy
+    volumes:
+      - ./sportsbook-worker/logs:/app/logs
+    networks:
+      - arb-network
+    # Security capabilities for Chromium
+    cap_add:
+      - SYS_ADMIN
+
+  # Sportsbook UI - Admin Dashboard
+  sportsbook-ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: arb-sportsbook-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      API_BASE_URL: http://engine:3000
+    depends_on:
+      - engine
+    networks:
+      - arb-network
+
 networks:
   arb-network:
     driver: bridge
