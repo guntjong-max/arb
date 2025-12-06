@@ -1,5 +1,8 @@
 FROM node:20-alpine AS base
 
+# Install Chromium and dependencies for Puppeteer
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
@@ -17,6 +20,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
