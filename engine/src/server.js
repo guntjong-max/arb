@@ -9,6 +9,8 @@ const { register: metricsRegister } = require('./utils/metrics');
 const healthRoutes = require('./routes/health.routes');
 const jobRoutes = require('./routes/job.routes');
 const workerRoutes = require('./routes/worker.routes');
+const sessionsRoutes = require('./routes/sessions.routes');
+const scannerRoutes = require('./routes/scanner.routes');
 
 async function createServer() {
   const app = express();
@@ -34,6 +36,8 @@ async function createServer() {
   app.use('/health', healthRoutes);
   app.use('/api/v1/jobs', jobRoutes);
   app.use('/api/v1/workers', workerRoutes);
+  app.use('/api/v1/sessions', sessionsRoutes);
+  app.use('/api/v1/scanner', scannerRoutes);
 
   // Prometheus metrics endpoint
   app.get('/metrics', async (req, res) => {
@@ -66,6 +70,21 @@ async function createServer() {
           'POST /api/v1/workers/:id/heartbeat': 'Worker heartbeat',
           'GET /api/v1/workers': 'List workers',
           'GET /api/v1/workers/:id': 'Get worker details'
+        },
+        sessions: {
+          'POST /api/v1/sessions/login/nova88': 'Login to Nova88',
+          'POST /api/v1/sessions/login/qq188': 'Login to QQ188',
+          'GET /api/v1/sessions': 'List all sessions',
+          'GET /api/v1/sessions/:id': 'Get session details',
+          'DELETE /api/v1/sessions/:id': 'Expire session'
+        },
+        scanner: {
+          'POST /api/v1/scanner/scan': 'Scan for arbitrage opportunities',
+          'GET /api/v1/scanner/opportunities': 'List opportunities',
+          'GET /api/v1/scanner/opportunities/:id': 'Analyze opportunity',
+          'POST /api/v1/scanner/opportunities/:id/execute': 'Execute arbitrage bet',
+          'GET /api/v1/scanner/bets': 'Get bet history',
+          'GET /api/v1/scanner/stats': 'Get betting statistics'
         },
         metrics: {
           'GET /metrics': 'Prometheus metrics'
