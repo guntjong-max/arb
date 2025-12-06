@@ -7,8 +7,10 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install dependencies (skip Puppeteer downloads to avoid hanging)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Production stage

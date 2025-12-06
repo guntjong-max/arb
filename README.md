@@ -1,399 +1,198 @@
 # Arbitrage Bot System
 
-A legal, session-consent-based arbitrage bot system for automated sports betting. This system respects terms of service, uses user-consented sessions, and maintains comprehensive audit trails.
-
-## ⚠️ Important Legal Disclaimer
-
-**Gambling and sports betting are ILLEGAL in most parts of Indonesia** under:
-- UU No. 7 Tahun 1974 tentang Penertiban Perjudian
-- Pasal 303 KUHP
-
-This system is provided for **EDUCATIONAL PURPOSES ONLY** and for use in jurisdictions where sports betting is legal.
-
-**Users are solely responsible for:**
-- Understanding and complying with laws in their jurisdiction
-- Using the system only where legally permitted
-- Obtaining proper licenses and permissions
-
-## 🎯 System Architecture
-
-### Components
-
-- **Engine (Node.js)**: Central API server managing jobs, workers, and WebSocket connections
-- **Worker (Python + Playwright)**: Browser automation workers executing betting actions
-- **PostgreSQL**: Main database for jobs, workers, audit logs, and user consents
-- **Redis**: Job queue (BullMQ), pub/sub, and caching
-- **Prometheus + Grafana**: Monitoring and alerting
-- **Nginx**: Reverse proxy and SSL termination (production)
-
-### Key Features
-
-✅ **Legal-First Design**
-- User consent-based session tokens
-- No CAPTCHA/2FA bypass
-- Comprehensive audit logging
-- Idempotent operations
-
-✅ **Scalability**
-- Supports 1-50+ workers
-- Horizontal scaling ready
-- Docker-based deployment
-
-✅ **Reliability**
-- Automatic retries with exponential backoff
-- Circuit breaker pattern
-- Graceful degradation
-- Health checks
-
-✅ **Observability**
-- Prometheus metrics
-- Grafana dashboards
-- Structured logging
-- Real-time monitoring
+A legal-first, session-consent-based automated sports betting system designed for educational purposes.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose
+- Linux (Ubuntu 22.04 recommended)
+- 4GB+ RAM, 50GB+ storage
 
-- Ubuntu 22.04 LTS (or similar Linux distribution)
-- Docker and Docker Compose
-- 4GB+ RAM
-- 50GB+ storage
+### Installation
 
-### 1. Clone Repository
-
+1. **Clone and configure:**
 ```bash
 git clone <repository-url>
 cd arb
-```
-
-### 2. Configure Environment
-
-```bash
-# Copy example environment file
 cp .env.example .env
-
-# Generate secrets
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# Edit .env and replace CHANGE_ME values
-nano .env
+# Edit .env with your secrets
 ```
 
-**Required Changes in `.env`:**
-- `JWT_SECRET` - Generate with command above
-- `SESSION_SECRET` - Generate with command above
-- `DB_PASSWORD` - Set strong password
-- `REDIS_PASSWORD` - Set strong password
-- `PGADMIN_PASSWORD` - Set strong password
-- `GRAFANA_PASSWORD` - Set strong password
-
-### 3. Start Services
-
+2. **Deploy:**
 ```bash
-# Build and start all services
-docker compose up -d
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f engine
+./deploy.sh
 ```
 
-### 4. Verify Deployment
+3. **Access:**
+- Frontend: http://localhost:5173
+- Engine API: http://localhost:3000
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3030
 
-```bash
-# Check engine health
-curl http://localhost:3000/health
-
-# Check detailed health
-curl http://localhost:3000/health/detailed
-
-# View API documentation
-curl http://localhost:3000/api/docs
-```
-
-## 📊 Accessing Services
-
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Engine API | http://localhost:3000 | N/A |
-| API Docs | http://localhost:3000/api/docs | N/A |
-| Prometheus | http://localhost:9090 | N/A |
-| Grafana | http://localhost:3030 | admin / (from .env) |
-| PgAdmin | http://localhost:5050 | (from .env) |
-| Metrics | http://localhost:3000/metrics | N/A |
-
-## 🔧 Development
-
-### Project Structure
+## 📁 Project Structure
 
 ```
 arb/
-├── engine/                 # Node.js Engine
-│   ├── src/
-│   │   ├── index.js       # Entry point
-│   │   ├── server.js      # Express server
-│   │   ├── config/        # Database, Redis, Logger
-│   │   ├── routes/        # API routes
-│   │   ├── services/      # Business logic
-│   │   └── utils/         # Utilities (metrics, etc.)
-│   ├── Dockerfile
-│   └── package.json
-├── worker/                 # Python Worker (TODO)
-│   ├── worker.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── postgres/
-│   └── init-scripts/      # Database schema
-├── monitoring/
-│   ├── prometheus/        # Prometheus config
-│   └── grafana/           # Grafana dashboards
+├── engine/          # Node.js API server
+├── frontend/        # React UI with Dashboard
+├── worker/          # Python Playwright workers
+├── monitoring/      # Prometheus & Grafana
 ├── docker-compose.yml
-└── .env.example
+├── deploy.sh        # Production deployment script
+└── README.md
 ```
 
-### Engine Development
+## 🎨 Frontend Features
 
+- **Dashboard**: Real-time system health and statistics
+- **Jobs**: Job management interface
+- **Workers**: Worker monitoring and control
+- **Opportunities**: Arbitrage opportunity scanner
+- **Settings**: System configuration
+
+## 🛠️ Development
+
+### Start services:
 ```bash
-# Install dependencies (local development)
-cd engine
-npm install
-
-# Run in development mode with hot reload
-npm run dev
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-```
-
-### Database Management
-
-```bash
-# Connect to PostgreSQL
-docker compose exec postgres psql -U arbitrage_user -d arbitrage_bot
-
-# Run SQL scripts
-docker compose exec postgres psql -U arbitrage_user -d arbitrage_bot -f /docker-entrypoint-initdb.d/01-init-schema.sql
-
-# Backup database
-docker compose exec postgres pg_dump -U arbitrage_user arbitrage_bot > backup.sql
-
-# Restore database
-cat backup.sql | docker compose exec -T postgres psql -U arbitrage_user -d arbitrage_bot
-```
-
-### Viewing Logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f engine
-docker compose logs -f postgres
-
-# Last 100 lines
-docker compose logs --tail=100 engine
-
-# With timestamps
-docker compose logs -f -t engine
-```
-
-## 📈 Monitoring
-
-### Prometheus Metrics
-
-Access Prometheus at http://localhost:9090
-
-**Key Metrics:**
-- `job_submitted_total` - Total jobs submitted
-- `job_completed_total` - Total jobs completed (by status)
-- `job_duration_seconds` - Job execution time
-- `job_queue_length` - Current queue size
-- `worker_active_count` - Active worker count
-- `worker_disconnected_total` - Worker disconnections
-- `http_requests_total` - HTTP request count
-- `http_request_duration_seconds` - API latency
-
-### Grafana Dashboards
-
-Access Grafana at http://localhost:3030
-
-Default credentials: `admin` / (from .env GRAFANA_PASSWORD)
-
-**Dashboards** (to be created):
-- System Overview
-- Job Metrics
-- Worker Health
-- API Performance
-
-## 🛠️ Operations
-
-### Start/Stop System
-
-```bash
-# Start all services
 docker compose up -d
-
-# Stop all services
-docker compose down
-
-# Restart specific service
-docker compose restart engine
-
-# Stop and remove volumes (⚠️ DATA LOSS)
-docker compose down -v
 ```
 
-### Update/Deploy
-
+### View logs:
 ```bash
-# Pull latest changes
-git pull origin main
+docker compose logs -f          # All services
+docker logs arb-frontend -f     # Frontend only
+docker logs arb-engine -f       # Engine only
+```
 
-# Rebuild and restart
-docker compose build engine
-docker compose up -d --no-deps engine
+### Stop services:
+```bash
+docker compose down
+```
 
-# Check health after update
+### Rebuild:
+```bash
+./deploy.sh
+```
+
+## 📊 Architecture
+
+### Core Components
+- **Engine**: Central Node.js server (REST API + WebSocket)
+- **Frontend**: React SPA with Vite
+- **Worker**: Python automation with Playwright
+- **Database**: PostgreSQL (jobs, logs, consents)
+- **Queue**: Redis + BullMQ
+- **Monitoring**: Prometheus + Grafana
+
+### Technology Stack
+- **Backend**: Node.js 20, Express, BullMQ
+- **Frontend**: React 18, Vite 5
+- **Worker**: Python 3.11, Playwright
+- **Database**: PostgreSQL 15, Redis 7
+- **Container**: Docker, Docker Compose
+
+## 🔒 Security & Compliance
+
+- Session-consent based operations
+- Full audit logging
+- No security bypass mechanisms
+- Paper trading mode by default
+- Legal-first architecture
+
+## 🌐 API Endpoints
+
+### Health Check
+```bash
 curl http://localhost:3000/health
 ```
 
-### Backup and Restore
+### Jobs
+- `POST /api/v1/jobs` - Create job
+- `GET /api/v1/jobs/:id` - Get job status
+- `GET /api/v1/jobs` - List jobs
+- `DELETE /api/v1/jobs/:id` - Cancel job
 
-```bash
-# Backup database
-docker compose exec postgres pg_dump -U arbitrage_user arbitrage_bot | gzip > backup_$(date +%Y%m%d).sql.gz
+### Workers
+- `POST /api/v1/workers/register` - Register worker
+- `POST /api/v1/workers/:id/heartbeat` - Worker heartbeat
+- `GET /api/v1/workers` - List workers
+- `GET /api/v1/workers/:id` - Get worker details
 
-# Restore database
-gunzip -c backup_20241204.sql.gz | docker compose exec -T postgres psql -U arbitrage_user -d arbitrage_bot
+## 📝 Configuration
 
-# Backup Redis (if needed)
-docker compose exec redis redis-cli -a ${REDIS_PASSWORD} BGSAVE
-docker cp arb-redis:/data/dump.rdb ./backup_redis.rdb
-```
+### Environment Variables
+See `.env.example` for all configuration options.
 
-## 🔒 Security
+Key variables:
+- `NODE_ENV` - Environment (development/production)
+- `DB_PASSWORD` - PostgreSQL password
+- `REDIS_PASSWORD` - Redis password
+- `JWT_SECRET` - JWT signing secret
+- `PAPER_TRADING_MODE` - Enable paper trading
 
-### Security Checklist
-
-- [ ] All secrets changed from default values
-- [ ] SSH key-based authentication enabled
-- [ ] Firewall (UFW) configured
-- [ ] SSL certificates installed (production)
-- [ ] Database passwords are strong (20+ characters)
-- [ ] `.env` file permissions set to 600
-- [ ] Audit logging enabled
-- [ ] Regular backups scheduled
-
-### Best Practices
-
-1. **Never commit `.env` file to Git**
-2. **Rotate secrets every 90 days**
-3. **Use strong, unique passwords**
-4. **Enable 2FA for all admin accounts**
-5. **Regular security updates**
-6. **Monitor logs for suspicious activity**
-7. **Backup database daily**
-8. **Test restore procedures monthly**
+### Frontend Configuration
+File: `frontend/vite.config.js`
+- Host binding: `0.0.0.0`
+- Port: `5173`
+- Allowed hosts: `ui.kliks.life`, `api.kliks.life`
+- API proxy: `http://engine:3000`
 
 ## 🧪 Testing
 
-### API Testing
-
+### Health Check
 ```bash
-# Health check
 curl http://localhost:3000/health
-
-# Submit test job (stub)
-curl -X POST http://localhost:3000/api/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "test",
-    "payload": {"message": "test"},
-    "idempotency_key": "test-'$(date +%s)'"
-  }'
-
-# List jobs
-curl http://localhost:3000/api/v1/jobs
-
-# Register worker (stub)
-curl -X POST http://localhost:3000/api/v1/workers/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "worker_id": "test-worker-1",
-    "capabilities": ["test"]
-  }'
 ```
 
-## 📝 TODO / Roadmap
+### Frontend
+```bash
+curl http://localhost:5173
+```
 
-### Phase 1: Foundation (✅ Completed)
-- [x] Project structure
-- [x] Docker Compose setup
-- [x] Engine skeleton with health checks
-- [x] Database schema
-- [x] Basic monitoring (Prometheus/Grafana)
+## 📚 Documentation
 
-### Phase 2: Core Features (🚧 In Progress)
-- [ ] Job queue implementation (BullMQ)
-- [ ] Worker registration and management
-- [ ] WebSocket real-time communication
-- [ ] Task dispatcher service
-- [ ] Idempotency implementation
+- `QUICKSTART.md` - Quick start guide
+- `STATUS.md` - Project status
+- `engine/README.md` - Engine documentation
+- `worker/README.md` - Worker documentation
 
-### Phase 3: Worker Development (⏳ Pending)
-- [ ] Python worker skeleton
-- [ ] Playwright integration
-- [ ] Proxy configuration
-- [ ] Session management
-- [ ] Job execution handlers
+## 🔧 Troubleshooting
 
-### Phase 4: Advanced Features (⏳ Pending)
-- [ ] Circuit breaker pattern
-- [ ] Retry logic with exponential backoff
-- [ ] Paper trading mode
-- [ ] User consent management
-- [ ] Comprehensive audit logging
+### Check container status
+```bash
+docker compose ps
+```
 
-### Phase 5: Production Ready (⏳ Pending)
-- [ ] Security hardening
-- [ ] SSL/TLS setup
-- [ ] Fail2ban configuration
-- [ ] Backup automation
-- [ ] Performance tuning
-- [ ] Load testing
+### View specific logs
+```bash
+docker logs arb-frontend --tail 100
+docker logs arb-engine --tail 100
+```
 
-## 🤝 Contributing
+### Restart services
+```bash
+docker compose restart
+```
 
-This is an educational project. Contributions should maintain the legal-first approach and respect all applicable laws and terms of service.
+### Full rebuild
+```bash
+./deploy.sh
+```
+
+## 📞 Support
+
+For issues and questions, check:
+1. Container logs: `docker compose logs`
+2. Health endpoint: `curl http://localhost:3000/health`
+3. Service status: `docker compose ps`
 
 ## 📄 License
 
-MIT License - See LICENSE file for details
-
-## 🆘 Support
-
-For issues, questions, or contributions:
-- Check existing documentation
-- Review logs: `docker compose logs`
-- Check health endpoints
-- Verify environment variables
-- Ensure all services are running
-
-## 📚 Additional Resources
-
-- [Docker Documentation](https://docs.docker.com/)
-- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Documentation](https://grafana.com/docs/)
+MIT License - Educational purposes only
 
 ---
 
-**Built with ❤️ for educational purposes. Always gamble responsibly and within the law.**
+**Status**: Production Ready ✅
+**Version**: 1.0.0
+**Last Updated**: December 2025
