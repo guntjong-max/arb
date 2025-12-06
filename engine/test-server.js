@@ -1,0 +1,1 @@
+const express = require('express'); const app = express(); app.get('/health', (req, res) => res.json({status:'healthy',timestamp:new Date().toISOString()})); app.get('/api/v1/sessions', (req, res) => res.status(200).send('OK')); const PORT = 3000; app.listen(PORT, () => console.log(`TEST SERVER on port ${PORT}`));

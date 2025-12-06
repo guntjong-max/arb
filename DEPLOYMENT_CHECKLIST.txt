@@ -1,0 +1,159 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ENGINE RESTART LOOP - DEPLOYMENT CHECKLIST                ║
+╔══════════════════════════════════════════════════════════════════════════════╗
+
+📋 PRE-DEPLOYMENT VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ .env file created                    (/data/workspace/arb/.env)
+✅ Retry logic added                    (engine/src/index.js +22 lines)
+✅ Health check extended                (Dockerfile & docker-compose.yml)
+✅ Sessions route implemented           (engine/src/routes/sessions.routes.js)
+✅ No syntax errors                     (Validated with get_problems)
+
+🎯 DEPLOYMENT STEPS (On Docker Host: /home/arbuser/arb)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OPTION A - AUTOMATED (Recommended):
+  [ ] cd /home/arbuser/arb
+  [ ] bash deploy-restart-fix.sh
+  [ ] Wait for completion (monitors for 90s automatically)
+
+OPTION B - MANUAL:
+  [ ] cd /home/arbuser/arb
+  [ ] docker compose down
+  [ ] docker compose build engine
+  [ ] docker compose up -d postgres redis
+  [ ] sleep 15
+  [ ] docker compose up -d engine
+  [ ] docker compose logs engine -f
+
+📊 VERIFICATION TESTS (After 2 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  [ ] Container status: docker compose ps
+      Expected: arb-engine "Up (healthy)" not "Restarting"
+  
+  [ ] Health check: curl http://localhost:3000/health
+      Expected: {"status":"healthy",...}
+  
+  [ ] Sessions API: curl http://localhost:3000/api/v1/sessions
+      Expected: OK
+  
+  [ ] View logs: docker compose logs engine --tail=50
+      Expected: "Engine HTTP Server listening on port 3000"
+      Expected: No repeated startup messages
+      Expected: No error messages
+
+⏱️ STABILITY TEST (After 5 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  [ ] Check uptime: docker compose ps
+      Expected: Container uptime >5 minutes
+      Expected: Status remains "Up (healthy)"
+      Expected: No restart cycles
+
+  [ ] Test all endpoints:
+      [ ] GET /health
+      [ ] GET /health/detailed
+      [ ] GET /api/v1/sessions
+      [ ] GET /api/docs
+      [ ] GET /metrics
+
+  [ ] Check Nginx (if applicable):
+      Expected: Returns 200, not 502
+
+🔍 SUCCESS INDICATORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ Container shows "Up (healthy)"
+  ✓ No "Restarting" status
+  ✓ Health endpoint returns 200
+  ✓ Sessions endpoint returns "OK"
+  ✓ Uptime increases continuously
+  ✓ No error messages in logs
+  ✓ Arbitrage bot operations resume
+
+❌ FAILURE INDICATORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✗ Status shows "Restarting (0) X seconds ago"
+  ✗ Repeated "Starting Arbitrage Bot Engine..." in logs
+  ✗ Connection timeout errors
+  ✗ process.exit(1) in logs
+  ✗ Nginx returns 502
+
+  If failures occur:
+    1. docker compose logs engine --tail=200 | grep -i error
+    2. docker compose exec postgres pg_isready
+    3. docker compose exec redis redis-cli ping
+    4. bash diagnose.sh
+    5. Review ENGINE_RESTART_DIAGNOSIS.md
+
+📁 FILES CHANGED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  .env                              (Created - environment variables)
+  engine/src/index.js               (+22 lines - retry logic)
+  engine/Dockerfile                 (+1 line - health check timing)
+  docker-compose.yml                (+1 line - health check timing)
+  engine/src/server.js              (+2 lines - sessions route)
+  engine/src/routes/sessions.routes.js (Created - new endpoint)
+
+📖 DOCUMENTATION REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RESTART_FIX_EXECUTIVE_SUMMARY.txt  - High-level overview
+  ENGINE_RESTART_DIAGNOSIS.md        - Complete technical analysis
+  CRISIS_FIX_SUMMARY.md              - Crisis response documentation
+  QUICK_FIX.txt                      - Quick reference card
+  deploy-restart-fix.sh              - Automated deployment script
+  diagnose.sh                        - Diagnostic utility
+
+🔧 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Problem: Engine still restarting
+  Action:  docker compose logs engine --tail=100
+
+  Problem: Database connection fails
+  Action:  docker compose exec postgres pg_isready -U arbitrage_user
+
+  Problem: Redis connection fails
+  Action:  docker compose exec redis redis-cli -a <password> ping
+
+  Problem: Health check fails
+  Action:  Increase start_period to 90s in docker-compose.yml
+
+  Problem: Permissions error
+  Action:  Check .env file permissions (should be readable)
+
+💡 EXPECTED TIMELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  T+0:00  Start deployment
+  T+0:30  Services stopped
+  T+2:00  Engine rebuilt
+  T+2:30  Databases started
+  T+3:00  Engine started
+  T+4:00  Health checks passing
+  T+5:00  First verification complete
+  T+10:00 Stability confirmed
+
+  Total estimated time: 10 minutes
+  Critical window: First 5 minutes
+
+📞 SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  If deployment fails:
+    1. Capture logs: docker compose logs engine > engine-failure.log
+    2. Run diagnostics: bash diagnose.sh > diagnostics.log
+    3. Check container status: docker compose ps
+    4. Review ENGINE_RESTART_DIAGNOSIS.md for troubleshooting steps
+
+🎯 FINAL CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Before marking as complete, verify ALL of the following:
+  [ ] docker compose ps shows "Up (healthy)"
+  [ ] curl localhost:3000/health returns 200 OK
+  [ ] curl localhost:3000/api/v1/sessions returns "OK"
+  [ ] Logs show "Engine HTTP Server listening on port 3000"
+  [ ] No "Restarting" status in container list
+  [ ] Uptime >5 minutes without crashes
+  [ ] Nginx returns 200 (if applicable)
+  [ ] Arbitrage bot operations confirmed working
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           🚀 READY FOR DEPLOYMENT                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
