@@ -35,8 +35,10 @@ USER nodejs
 
 EXPOSE 3000 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=20s --start-period=90s --retries=3 \
-  CMD node healthcheck.js || exit 1
+# Health check - TEMPORARILY DISABLED FOR DEBUGGING
+# The compose healthcheck disable doesn't affect Dockerfile HEALTHCHECK
+# Uncomment after verifying app starts correctly
+# HEALTHCHECK --interval=30s --timeout=20s --start-period=90s --retries=3 \
+#   CMD node healthcheck.js || exit 1
 
 CMD ["node", "src/index.js"]

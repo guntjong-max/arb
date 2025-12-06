@@ -1,4 +1,34 @@
 // src/index.js - Entry point for Arbitrage Bot Engine
+
+// === CRITICAL ERROR HANDLERS (BEFORE ANY IMPORTS) ===
+// These catch crashes that happen before logger is initialized
+console.log('=== ENGINE PROCESS START ===');
+console.log('PID:', process.pid);
+console.log('Node version:', process.version);
+console.log('Platform:', process.platform);
+console.log('CWD:', process.cwd());
+
+// Catch uncaught exceptions EARLY
+process.on('uncaughtException', (err) => {
+  console.error('!!! FATAL: UNCAUGHT EXCEPTION !!!');
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Exiting with code 1');
+  process.exit(1);
+});
+
+// Catch unhandled rejections EARLY
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('!!! FATAL: UNHANDLED REJECTION !!!');
+  console.error('Reason:', reason);
+  console.error('Promise:', promise);
+  console.error('Exiting with code 1');
+  process.exit(1);
+});
+
+console.log('Early error handlers registered');
+console.log('=================================');
+
 // Early console logging before logger init
 console.log('[STARTUP] Loading environment...');
 require('dotenv').config();

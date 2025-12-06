@@ -19,4 +19,9 @@ services:
       # Force dotenv to load even in production
       DOTENV_CONFIG_PATH: /app/.env
     
+    # TEMPORARILY DISABLE healthcheck for debugging
+    # This allows container to stay running so we can see logs
+    healthcheck:
+      disable: true
+    
     restart: always
