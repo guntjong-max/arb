@@ -5,6 +5,7 @@ const { createServer } = require('./server');
 const { connectDatabase } = require('./config/database');
 const { connectRedis } = require('./config/redis');
 const { initializeMetrics } = require('./utils/metrics');
+const wsService = require('./services/websocket.service');
 
 let server;
 let httpServer;
@@ -34,6 +35,10 @@ async function start() {
       logger.info(`Engine HTTP Server listening on port ${PORT}`);
       logger.info(`Health check: http://localhost:${PORT}/health`);
       logger.info(`API docs: http://localhost:${PORT}/api/docs`);
+      
+      // Initialize WebSocket service on same port
+      wsService.initialize(httpServer);
+      logger.info(`WebSocket server initialized on ws://localhost:${PORT}/ws`);
     });
 
     // Graceful shutdown handlers
@@ -57,6 +62,9 @@ async function start() {
         
         await closeRedis();
         logger.info('Redis connection closed');
+        
+        wsService.shutdown();
+        logger.info('WebSocket service closed');
         
         logger.info('Graceful shutdown complete');
         process.exit(0);

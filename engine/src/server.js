@@ -9,6 +9,10 @@ const { register: metricsRegister } = require('./utils/metrics');
 const healthRoutes = require('./routes/health.routes');
 const jobRoutes = require('./routes/job.routes');
 const workerRoutes = require('./routes/worker.routes');
+const accountsRoutes = require('./routes/accounts.routes');
+const configRoutes = require('./routes/config.routes');
+const scannerRoutes = require('./routes/scanner.routes');
+const historyRoutes = require('./routes/history.routes');
 
 async function createServer() {
   const app = express();
@@ -34,6 +38,10 @@ async function createServer() {
   app.use('/health', healthRoutes);
   app.use('/api/v1/jobs', jobRoutes);
   app.use('/api/v1/workers', workerRoutes);
+  app.use('/api/v1/accounts', accountsRoutes);
+  app.use('/api/v1/config', configRoutes);
+  app.use('/api/v1/scanner', scannerRoutes);
+  app.use('/api/v1/history', historyRoutes);
 
   // Prometheus metrics endpoint
   app.get('/metrics', async (req, res) => {
@@ -66,6 +74,30 @@ async function createServer() {
           'POST /api/v1/workers/:id/heartbeat': 'Worker heartbeat',
           'GET /api/v1/workers': 'List workers',
           'GET /api/v1/workers/:id': 'Get worker details'
+        },
+        accounts: {
+          'GET /api/v1/accounts': 'List accounts',
+          'POST /api/v1/accounts': 'Create account',
+          'GET /api/v1/accounts/:id': 'Get account',
+          'PUT /api/v1/accounts/:id': 'Update account',
+          'DELETE /api/v1/accounts/:id': 'Delete account'
+        },
+        config: {
+          'GET /api/v1/config': 'Get configuration',
+          'PUT /api/v1/config': 'Update configuration',
+          'POST /api/v1/config/emergency-stop': 'Emergency stop',
+          'POST /api/v1/config/auto-trading': 'Toggle auto trading'
+        },
+        scanner: {
+          'GET /api/v1/scanner/opportunities': 'Get opportunities',
+          'GET /api/v1/scanner/live-feed': 'Live feed',
+          'GET /api/v1/scanner/stats': 'Scanner stats'
+        },
+        history: {
+          'GET /api/v1/history/bets': 'Bet history',
+          'GET /api/v1/history/logs': 'Activity logs',
+          'GET /api/v1/history/profit-summary': 'Profit summary',
+          'GET /api/v1/history/performance': 'Performance metrics'
         },
         metrics: {
           'GET /metrics': 'Prometheus metrics'
