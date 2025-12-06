@@ -28,6 +28,9 @@ COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 # Copy application code
 COPY --chown=nodejs:nodejs . .
 
+# Note: .env file will be provided by docker-compose env_file directive
+# If needed for build, it should be mounted during build
+
 USER nodejs
 
 EXPOSE 3000 3001

@@ -5,10 +5,18 @@ version: '3.9'
 
 services:
   engine:
-    # Remove volume mounts for production
+    # Remove problematic volume mounts for production
     volumes:
       - ./engine/logs:/app/logs
       # ❌ REMOVED: - ./engine/src:/app/src:ro
+    
+    # Explicitly load .env file (critical for production)
+    env_file:
+      - .env
+    
     environment:
       NODE_ENV: production
+      # Force dotenv to load even in production
+      DOTENV_CONFIG_PATH: /app/.env
+    
     restart: always
