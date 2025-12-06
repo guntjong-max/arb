@@ -28,7 +28,9 @@ services:
         condition: service_healthy
     volumes:
       - ./engine/logs:/app/logs
-      - ./engine/src:/app/src:ro
+      # REMOVED for production: - ./engine/src:/app/src:ro
+      # This volume mount overrides built files and causes crashes
+      # For development hot-reload, use docker-compose.dev.yml override
     networks:
       - arb-network
     healthcheck:
