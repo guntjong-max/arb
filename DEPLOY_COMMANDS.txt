@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════════
+🚀 QUICK DEPLOY COMMANDS - Healthcheck Disabled Debug Mode
+═══════════════════════════════════════════════════════════════
+
+OPTION 1: AUTOMATED DEPLOY (RECOMMENDED)
+─────────────────────────────────────────────────────────────
+
+cd /home/arbuser/arb
+chmod +x deploy-healthcheck-disabled.sh
+./deploy-healthcheck-disabled.sh
+
+
+OPTION 2: MANUAL DEPLOY (STEP BY STEP)
+─────────────────────────────────────────────────────────────
+
+cd /home/arbuser/arb
+
+# Stop services
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+# Remove old image
+docker rmi arb-engine
+
+# Clean cache
+docker builder prune -af
+
+# Rebuild
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --pull engine
+
+# Start
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# View logs
+docker compose logs -f engine
+
+
+VERIFICATION COMMANDS
+─────────────────────────────────────────────────────────────
+
+# Check container status
+docker compose ps
+
+# View logs (last 100 lines)
+docker compose logs engine --tail=100
+
+# Test health endpoint (direct)
+curl -s http://localhost:3000/health
+
+# Test health endpoint (nginx)
+curl -k -s https://api.kliks.life/health
+
+# Test sessions endpoint
+curl -k -X POST https://api.kliks.life/api/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"sportsbook":"bet365","credentials":{"username":"test","password":"test"},"user_consent":true}'
+
+
+TROUBLESHOOTING COMMANDS
+─────────────────────────────────────────────────────────────
+
+# Real-time logs
+docker compose logs -f engine
+
+# Check environment variables inside container
+docker compose exec engine env | grep -E "(NODE_ENV|DATABASE_URL|REDIS_URL)"
+
+# Check if server is listening on port 3000
+docker compose exec engine netstat -tlnp | grep 3000
+
+# Manual healthcheck test
+docker compose exec engine node healthcheck.js
+echo $?
+
+# Run container manually
+docker run --rm -it --env-file .env -e NODE_ENV=production arb-engine node src/index.js
+
+
+WHAT TO EXPECT
+─────────────────────────────────────────────────────────────
+
+✅ Container Status: Up (not Restarting)
+✅ Logs visible with startup messages
+✅ curl localhost:3000/health → {"status":"healthy"}
+✅ curl api.kliks.life/health → {"status":"healthy"} (not 502)
+✅ No health status shown (healthcheck disabled for debugging)
+
+
+KEY CHANGES IN THIS DEPLOYMENT
+─────────────────────────────────────────────────────────────
+
+1. ✅ Dockerfile HEALTHCHECK commented out
+2. ✅ docker-compose.prod.yml healthcheck disabled
+3. ✅ Early error handlers added to index.js
+4. ✅ Console logging always enabled in production
+5. ✅ Server binds to 0.0.0.0
+6. ✅ Environment variables loading via env_file
+7. ✅ Volume mount removed
+
+
+AFTER SUCCESS: RE-ENABLE HEALTHCHECK
+─────────────────────────────────────────────────────────────
+
+# 1. Uncomment lines 38-42 in engine/Dockerfile
+# 2. Remove "healthcheck: disable: true" from docker-compose.prod.yml
+# 3. Rebuild and deploy:
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build engine
+
+# 4. Wait 90 seconds then verify health status:
+sleep 90 && docker compose ps
+
+
+═══════════════════════════════════════════════════════════════

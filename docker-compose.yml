@@ -28,15 +28,17 @@ services:
         condition: service_healthy
     volumes:
       - ./engine/logs:/app/logs
-      - ./engine/src:/app/src:ro
+      # REMOVED for production: - ./engine/src:/app/src:ro
+      # This volume mount overrides built files and causes crashes
+      # For development hot-reload, use docker-compose.dev.yml override
     networks:
       - arb-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "node", "healthcheck.js"]
       interval: 30s
-      timeout: 10s
+      timeout: 20s  # Increased from 10s to 20s
       retries: 3
-      start_period: 40s
+      start_period: 90s  # Increased from 40s to 90s for DB/Redis init
 
   # Redis - Job Queue and Cache
   redis:

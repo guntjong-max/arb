@@ -1,0 +1,19 @@
+version: '3.9'
+
+# Development override untuk docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# This enables hot-reload for development
+
+services:
+  engine:
+    # Enable source code volume mount for hot-reload (development only)
+    volumes:
+      - ./engine/logs:/app/logs
+      - ./engine/src:/app/src:ro  # Hot-reload for development
+    
+    environment:
+      NODE_ENV: development
+      ENABLE_DEBUG_LOGS: "true"
+    
+    # Use nodemon for auto-restart on code changes
+    command: npx nodemon src/index.js

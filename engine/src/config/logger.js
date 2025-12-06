@@ -48,11 +48,10 @@ const logger = winston.createLogger({
   ]
 });
 
-// Console logging for non-production
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: consoleFormat
-  }));
-}
+// Console logging - ALWAYS enabled for Docker (logs go to docker logs)
+// In Docker, console output is the primary log destination
+logger.add(new winston.transports.Console({
+  format: process.env.NODE_ENV === 'production' ? customFormat : consoleFormat
+}));
 
 module.exports = logger;

@@ -1,0 +1,27 @@
+version: '3.9'
+
+# Production override untuk docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  engine:
+    # Remove problematic volume mounts for production
+    volumes:
+      - ./engine/logs:/app/logs
+      # ❌ REMOVED: - ./engine/src:/app/src:ro
+    
+    # Explicitly load .env file (critical for production)
+    env_file:
+      - .env
+    
+    environment:
+      NODE_ENV: production
+      # Force dotenv to load even in production
+      DOTENV_CONFIG_PATH: /app/.env
+    
+    # TEMPORARILY DISABLE healthcheck for debugging
+    # This allows container to stay running so we can see logs
+    healthcheck:
+      disable: true
+    
+    restart: always

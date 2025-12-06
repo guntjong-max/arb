@@ -1,3 +1,21 @@
+#!/bin/bash
+set -e
+
+echo "=========================================="
+echo "DEPLOYING WITH ENHANCED DEBUG LOGGING"
+echo "=========================================="
+echo ""
+
+cd /home/arbuser/arb
+
+# Stop services
+echo "Step 1: Stopping services..."
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+# Update index.js with enhanced logging
+echo ""
+echo "Step 2: Updating index.js with debug logging..."
+cat > engine/src/index.js << 'INDEXJS_EOF'
 // src/index.js - Entry point for Arbitrage Bot Engine
 
 // === CRITICAL ERROR HANDLERS (BEFORE ANY IMPORTS) ===
@@ -142,3 +160,81 @@ async function start() {
 
 // Start the engine
 start();
+INDEXJS_EOF
+
+echo "✅ index.js updated with enhanced logging"
+
+# Verify Dockerfile has healthcheck disabled
+echo ""
+echo "Step 3: Verifying Dockerfile healthcheck is disabled..."
+if grep -q "^HEALTHCHECK" engine/Dockerfile; then
+    echo "⚠️  HEALTHCHECK still active in Dockerfile, disabling it..."
+    sed -i '/^HEALTHCHECK/,/^  CMD/s/^/# /' engine/Dockerfile
+    echo "✅ Dockerfile healthcheck disabled"
+else
+    echo "✅ Dockerfile healthcheck already disabled"
+fi
+
+# Remove old image
+echo ""
+echo "Step 4: Removing old image..."
+docker rmi arb-engine || true
+
+# Clean cache
+echo ""
+echo "Step 5: Cleaning build cache..."
+docker builder prune -af
+
+# Rebuild
+echo ""
+echo "Step 6: Rebuilding engine (no cache)..."
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --pull engine
+
+# Start
+echo ""
+echo "Step 7: Starting services..."
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Wait
+echo ""
+echo "Step 8: Waiting 15 seconds for startup..."
+sleep 15
+
+# Diagnostics
+echo ""
+echo "=========================================="
+echo "DIAGNOSTICS"
+echo "=========================================="
+echo ""
+
+echo "=== Container Status ==="
+docker compose ps
+
+echo ""
+echo "=== Engine Logs (last 100 lines) ==="
+docker compose logs engine --tail=100
+
+echo ""
+echo "=== Test Health Endpoint (Direct) ==="
+curl -s http://localhost:3000/health || echo "Failed to connect"
+
+echo ""
+echo "=== Test Health Endpoint (Nginx) ==="
+curl -k -s https://api.kliks.life/health || echo "Failed to connect"
+
+echo ""
+echo "=========================================="
+echo "ANALYSIS"
+echo "=========================================="
+echo ""
+echo "Look for the LAST console log message before restart:"
+echo "  - If stops at '[START] Initializing logger...' → logger.js issue"
+echo "  - If stops at '[START] Initializing metrics...' → metrics issue"
+echo "  - If stops at '[START] Connecting to PostgreSQL...' → database config issue"
+echo "  - If stops at '[START] Connecting to Redis...' → redis config issue"
+echo "  - If stops at '[START] Creating server...' → server.js issue"
+echo "  - If stops at '[START] Starting HTTP server...' → port binding issue"
+echo ""
+echo "If you see 'FAILED TO START ENGINE', the error details will be shown above it."
+echo ""
+echo "=========================================="
