@@ -150,6 +150,34 @@ services:
     networks:
       - arb-network
 
+  # Frontend - React UI with Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: arb-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      VITE_API_URL: http://engine:3000
+      VITE_WS_URL: ws://engine:3001
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/vite.config.js:/app/vite.config.js:ro
+    depends_on:
+      engine:
+        condition: service_healthy
+    networks:
+      - arb-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 networks:
   arb-network:
     driver: bridge
