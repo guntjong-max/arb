@@ -9,6 +9,25 @@ const { initializeMetrics } = require('./utils/metrics');
 let server;
 let httpServer;
 
+// Retry helper function
+async function retryConnection(fn, name, maxRetries = 10, delayMs = 3000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await fn();
+      logger.info(`${name} connected successfully`);
+      return;
+    } catch (error) {
+      logger.warn(`${name} connection attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+      if (attempt === maxRetries) {
+        logger.error(`${name} connection failed after ${maxRetries} attempts`);
+        throw error;
+      }
+      logger.info(`Retrying ${name} connection in ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function start() {
   try {
     logger.info('Starting Arbitrage Bot Engine...');
@@ -19,11 +38,11 @@ async function start() {
     initializeMetrics();
     logger.info('Metrics initialized');
 
-    // Connect to databases
-    await connectDatabase();
+    // Connect to databases with retry
+    await retryConnection(connectDatabase, 'PostgreSQL', 10, 3000);
     logger.info('PostgreSQL connected');
 
-    await connectRedis();
+    await retryConnection(connectRedis, 'Redis', 10, 3000);
     logger.info('Redis connected');
 
     // Create and start server
