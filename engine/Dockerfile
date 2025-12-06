@@ -36,7 +36,7 @@ USER nodejs
 EXPOSE 3000 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=20s --start-period=90s --retries=3 \
   CMD node healthcheck.js || exit 1
 
 CMD ["node", "src/index.js"]
