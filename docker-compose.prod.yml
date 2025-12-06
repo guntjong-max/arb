@@ -1,0 +1,14 @@
+version: '3.9'
+
+# Production override untuk docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  engine:
+    # Remove volume mounts for production
+    volumes:
+      - ./engine/logs:/app/logs
+      # ❌ REMOVED: - ./engine/src:/app/src:ro
+    environment:
+      NODE_ENV: production
+    restart: always
