@@ -2,9 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (skip Puppeteer downloads to avoid hanging)
 COPY package*.json ./
-RUN npm ci
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN npm install
 
 # Copy application files
 COPY . .

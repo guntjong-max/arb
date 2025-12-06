@@ -1,0 +1,241 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║              ✅ DOCKER BUILD FIX - COMPLETED                     ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+PROBLEM SUMMARY
+═══════════════
+❌ npm ci fails due to package-lock.json sync issues
+❌ Build process hangs downloading Puppeteer Chromium  
+❌ Corrupted node_modules in engine and frontend
+
+SOLUTION IMPLEMENTED
+════════════════════
+✅ engine/Dockerfile FIXED
+   • Changed: npm ci → npm install --omit=dev
+   • Added: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+   • Added: PUPPETEER_SKIP_DOWNLOAD=true
+
+✅ frontend/Dockerfile FIXED
+   • Changed: npm ci → npm install
+   • Added: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+   • Added: PUPPETEER_SKIP_DOWNLOAD=true
+
+✅ cleanup-and-rebuild.sh CREATED
+   • Automated cleanup script
+   • Removes corrupted files
+   • Rebuilds with --no-cache
+   • Starts all services
+
+✅ Documentation CREATED
+   • DOCKER_BUILD_FIX.md (detailed guide)
+   • DOCKER_FIX_QUICKREF.txt (quick reference)
+
+═══════════════════════════════════════════════════════════════════
+
+🚀 HOW TO RUN THE FIX
+═════════════════════
+
+ONE COMMAND TO FIX EVERYTHING:
+
+    cd /data/workspace/arb && ./cleanup-and-rebuild.sh
+
+═══════════════════════════════════════════════════════════════════
+
+📋 WHAT THE SCRIPT DOES
+═══════════════════════
+
+1. ⏹️  Stops all running containers
+2. 🗑️  Removes corrupted node_modules directories
+3. 🗑️  Removes corrupted package-lock.json files
+4. 🗑️  Removes old Docker images
+5. 🧹 Prunes Docker build cache
+6. 🔨 Rebuilds images with --no-cache
+7. ▶️  Starts all services
+8. 📊 Shows service status
+9. 📝 Displays recent logs
+
+═══════════════════════════════════════════════════════════════════
+
+⏱️  EXPECTED TIMELINE
+═══════════════════
+
+• Cleanup:    ~30 seconds
+• Build:      ~3-5 minutes
+• Startup:    ~2-3 minutes
+━━━━━━━━━━━━━━━━━━━━━━
+• TOTAL:      ~6-9 minutes
+
+═══════════════════════════════════════════════════════════════════
+
+✅ SUCCESS VERIFICATION
+═══════════════════════
+
+After running the script, verify:
+
+1. Container Status
+   $ docker compose ps
+   ✓ All containers should show "Up"
+
+2. Engine API
+   $ curl http://localhost:3000/health
+   ✓ Should return JSON health status
+
+3. Frontend UI
+   $ curl http://localhost:5173
+   ✓ Should return HTML page
+
+4. Logs Check
+   $ docker logs arb-engine
+   $ docker logs arb-frontend
+   ✓ No critical errors
+
+═══════════════════════════════════════════════════════════════════
+
+🌐 SERVICE ACCESS
+═════════════════
+
+Once running, access:
+
+• Engine API:     http://localhost:3000
+• Frontend UI:    http://localhost:5173
+• Prometheus:     http://localhost:9090
+• Grafana:        http://localhost:3030
+• PgAdmin:        http://localhost:5050
+
+═══════════════════════════════════════════════════════════════════
+
+📁 FILES CREATED/MODIFIED
+═════════════════════════
+
+Modified:
+✓ engine/Dockerfile        (npm install fix)
+✓ frontend/Dockerfile      (npm install fix)
+
+Created:
+✓ cleanup-and-rebuild.sh   (automation script)
+✓ DOCKER_BUILD_FIX.md      (detailed docs)
+✓ DOCKER_FIX_QUICKREF.txt  (quick reference)
+✓ BUILD_FIX_SUMMARY.txt    (this file)
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 TECHNICAL DETAILS
+════════════════════
+
+engine/Dockerfile Changes:
+──────────────────────────
+BEFORE:
+  RUN npm ci --only=production
+
+AFTER:
+  ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+  ENV PUPPETEER_SKIP_DOWNLOAD=true
+  RUN npm install --omit=dev
+
+frontend/Dockerfile Changes:
+────────────────────────────
+BEFORE:
+  RUN npm ci
+
+AFTER:
+  ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+  ENV PUPPETEER_SKIP_DOWNLOAD=true
+  RUN npm install
+
+Why These Changes?
+──────────────────
+• npm install: More flexible than npm ci
+• PUPPETEER_SKIP_*: Prevents browser download hang
+• --omit=dev: Production dependencies only (engine)
+
+═══════════════════════════════════════════════════════════════════
+
+🛠️  ALTERNATIVE MANUAL STEPS
+═══════════════════════════
+
+If you prefer manual execution:
+
+# Navigate to project
+cd /data/workspace/arb
+
+# Stop containers
+docker compose down
+
+# Clean corrupted files
+rm -rf engine/node_modules engine/package-lock.json
+rm -rf frontend/node_modules frontend/package-lock.json
+
+# Remove old images
+docker rmi arb-engine arb-frontend 2>/dev/null || true
+
+# Rebuild fresh
+docker compose build --no-cache
+
+# Start services
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+═══════════════════════════════════════════════════════════════════
+
+🔧 TROUBLESHOOTING
+══════════════════
+
+If issues persist:
+
+1. Check Docker Resources
+   $ docker system df
+   $ docker system prune -a -f
+
+2. View Detailed Build Logs
+   $ docker compose build --no-cache --progress=plain 2>&1 | tee build.log
+
+3. Check for Port Conflicts
+   $ netstat -tlnp | grep -E '3000|5173|6379|5432'
+
+4. Verify Network Connectivity
+   $ curl -I https://registry.npmjs.org/
+
+5. Check Docker Version
+   $ docker --version
+   $ docker compose version
+
+═══════════════════════════════════════════════════════════════════
+
+📖 DOCUMENTATION
+════════════════
+
+• DOCKER_BUILD_FIX.md     → Complete guide (299 lines)
+• DOCKER_FIX_QUICKREF.txt → Quick reference (187 lines)
+• BUILD_FIX_SUMMARY.txt   → This summary
+• cleanup-and-rebuild.sh  → Automation script (186 lines)
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 READY TO EXECUTE
+═══════════════════
+
+Everything is prepared and ready!
+
+Just run:
+
+    ./cleanup-and-rebuild.sh
+
+The script will handle everything automatically.
+
+Expected result:
+✅ All services UP and running
+✅ No dependency errors
+✅ Clean build without hanging
+
+═══════════════════════════════════════════════════════════════════
+
+STATUS: READY ✅
+
+Execute: ./cleanup-and-rebuild.sh

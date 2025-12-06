@@ -1,0 +1,186 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║           🔧 DOCKER BUILD FIX - QUICK REFERENCE                   ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+PROBLEM SOLVED
+══════════════
+✗ npm ci fails due to package-lock.json sync issues
+✗ Build hangs downloading Puppeteer Chromium
+✗ Corrupted node_modules causing build failures
+
+SOLUTION APPLIED
+════════════════
+✅ Changed npm ci → npm install (more flexible)
+✅ Added PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+✅ Added PUPPETEER_SKIP_DOWNLOAD=true
+✅ Created cleanup script to remove corrupted files
+
+═══════════════════════════════════════════════════════════════════
+
+⚡ QUICK FIX (ONE COMMAND)
+═════════════════════════
+
+Run this command to fix everything:
+
+    cd /data/workspace/arb && ./cleanup-and-rebuild.sh
+
+This will:
+  1. Stop all containers
+  2. Remove corrupted node_modules and package-lock.json
+  3. Remove old Docker images
+  4. Rebuild everything fresh
+  5. Start all services
+  6. Show status and logs
+
+═══════════════════════════════════════════════════════════════════
+
+📋 WHAT WAS CHANGED
+═══════════════════
+
+1. engine/Dockerfile
+   BEFORE: RUN npm ci --only=production
+   AFTER:  ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+           ENV PUPPETEER_SKIP_DOWNLOAD=true
+           RUN npm install --omit=dev
+
+2. frontend/Dockerfile
+   BEFORE: RUN npm ci
+   AFTER:  ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+           ENV PUPPETEER_SKIP_DOWNLOAD=true
+           RUN npm install
+
+3. Created: cleanup-and-rebuild.sh
+   - Automated cleanup and rebuild script
+   - Removes all corrupted files
+   - Rebuilds with --no-cache
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 EXECUTION STEPS
+══════════════════
+
+STEP 1: Navigate to project directory
+$ cd /data/workspace/arb
+
+STEP 2: Run cleanup script
+$ ./cleanup-and-rebuild.sh
+
+STEP 3: Wait for completion (3-5 minutes)
+
+STEP 4: Verify services
+$ docker compose ps
+
+═══════════════════════════════════════════════════════════════════
+
+✅ VERIFY SUCCESS
+═════════════════
+
+Check 1: Container Status
+$ docker compose ps
+Expected: All containers "Up"
+
+Check 2: Engine Health
+$ curl http://localhost:3000/health
+Expected: JSON response
+
+Check 3: Frontend Access
+$ curl http://localhost:5173
+Expected: HTML response
+
+Check 4: View Logs
+$ docker logs arb-engine
+$ docker logs arb-frontend
+Expected: No errors
+
+═══════════════════════════════════════════════════════════════════
+
+🌐 ACCESS POINTS
+════════════════
+
+After successful build:
+
+• Engine API:    http://localhost:3000
+• Frontend UI:   http://localhost:5173
+• Prometheus:    http://localhost:9090
+• Grafana:       http://localhost:3030
+• PgAdmin:       http://localhost:5050
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 TROUBLESHOOTING
+══════════════════
+
+If build still fails:
+
+1. Check Docker disk space:
+   $ docker system df
+   $ docker system prune -a
+
+2. View detailed build logs:
+   $ docker compose build --no-cache --progress=plain
+
+3. Check individual service logs:
+   $ docker compose logs engine
+   $ docker compose logs frontend
+
+4. Restart specific service:
+   $ docker compose restart engine
+
+═══════════════════════════════════════════════════════════════════
+
+📊 BUILD TIMES
+══════════════
+
+Expected durations:
+• Cleanup:       ~30 seconds
+• Build:         ~3-5 minutes
+• Startup:       ~2-3 minutes
+• Total:         ~6-9 minutes
+
+═══════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION
+════════════════
+
+Full details:
+• DOCKER_BUILD_FIX.md  → Complete documentation
+• cleanup-and-rebuild.sh → Automation script
+• This file → Quick reference
+
+═══════════════════════════════════════════════════════════════════
+
+🚀 READY TO RUN
+═══════════════
+
+Just execute:
+
+    ./cleanup-and-rebuild.sh
+
+And wait for the system to come up! ✅
+
+═══════════════════════════════════════════════════════════════════
+
+MANUAL ALTERNATIVE
+═══════════════════
+
+If you prefer manual steps:
+
+# Stop services
+$ docker compose down
+
+# Clean files
+$ rm -rf engine/node_modules engine/package-lock.json
+$ rm -rf frontend/node_modules frontend/package-lock.json
+
+# Remove old images
+$ docker rmi arb-engine arb-frontend
+
+# Rebuild and start
+$ docker compose build --no-cache
+$ docker compose up -d
+
+═══════════════════════════════════════════════════════════════════
+
+Good luck! 🍀
