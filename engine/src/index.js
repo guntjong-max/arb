@@ -29,9 +29,10 @@ async function start() {
     // Create and start server
     const app = await createServer();
     const PORT = process.env.PORT || 3000;
+    const HOST = '0.0.0.0';  // Bind to all interfaces for Docker
     
-    httpServer = app.listen(PORT, () => {
-      logger.info(`Engine HTTP Server listening on port ${PORT}`);
+    httpServer = app.listen(PORT, HOST, () => {
+      logger.info(`Engine HTTP Server listening on ${HOST}:${PORT}`);
       logger.info(`Health check: http://localhost:${PORT}/health`);
       logger.info(`API docs: http://localhost:${PORT}/api/docs`);
     });
