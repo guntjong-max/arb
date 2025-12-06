@@ -1,35 +1,39 @@
-// src/index.js - Entry point for Arbitrage Bot Engine
+═══════════════════════════════════════════════════════════════════════
+🔍 ENHANCED DEBUG DEPLOYMENT - COPY THIS ENTIRE BLOCK
+═══════════════════════════════════════════════════════════════════════
 
-// === CRITICAL ERROR HANDLERS (BEFORE ANY IMPORTS) ===
-// These catch crashes that happen before logger is initialized
+cd /home/arbuser/arb
+
+cat > deploy-with-debug-logging.sh << 'EOFDEPLOY'
+#!/bin/bash
+set -e
+cd /home/arbuser/arb
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+cat > engine/src/index.js << 'EOFINDEX'
+// src/index.js - Entry point for Arbitrage Bot Engine
 console.log('=== ENGINE PROCESS START ===');
 console.log('PID:', process.pid);
 console.log('Node version:', process.version);
 console.log('Platform:', process.platform);
 console.log('CWD:', process.cwd());
 
-// Catch uncaught exceptions EARLY
 process.on('uncaughtException', (err) => {
   console.error('!!! FATAL: UNCAUGHT EXCEPTION !!!');
   console.error('Error:', err.message);
   console.error('Stack:', err.stack);
-  console.error('Exiting with code 1');
   process.exit(1);
 });
 
-// Catch unhandled rejections EARLY
 process.on('unhandledRejection', (reason, promise) => {
   console.error('!!! FATAL: UNHANDLED REJECTION !!!');
   console.error('Reason:', reason);
   console.error('Promise:', promise);
-  console.error('Exiting with code 1');
   process.exit(1);
 });
 
 console.log('Early error handlers registered');
 console.log('=================================');
-
-// Early console logging before logger init
 console.log('[STARTUP] Loading environment...');
 require('dotenv').config();
 console.log('[STARTUP] Environment loaded. NODE_ENV:', process.env.NODE_ENV);
@@ -49,17 +53,15 @@ async function start() {
   try {
     console.log('[START] Initializing logger...');
     logger.info('Starting Arbitrage Bot Engine...');
-    logger.info(`Environment: ${process.env.NODE_ENV}`);
-    logger.info(`Paper Trading Mode: ${process.env.PAPER_TRADING_MODE}`);
+    logger.info(\`Environment: \${process.env.NODE_ENV}\`);
+    logger.info(\`Paper Trading Mode: \${process.env.PAPER_TRADING_MODE}\`);
     console.log('[START] Logger initialized successfully');
 
-    // Initialize metrics
     console.log('[START] Initializing metrics...');
     initializeMetrics();
     logger.info('Metrics initialized');
     console.log('[START] Metrics initialized successfully');
 
-    // Connect to databases
     console.log('[START] Connecting to PostgreSQL...');
     await connectDatabase();
     logger.info('PostgreSQL connected');
@@ -70,44 +72,33 @@ async function start() {
     logger.info('Redis connected');
     console.log('[START] Redis connected successfully');
 
-    // Create and start server
     console.log('[START] Creating server...');
     const app = await createServer();
     console.log('[START] Server created successfully');
     
     const PORT = process.env.PORT || 3000;
-    const HOST = '0.0.0.0';  // Bind to all interfaces for Docker
+    const HOST = '0.0.0.0';
     
-    console.log(`[START] Starting HTTP server on ${HOST}:${PORT}...`);
+    console.log(\`[START] Starting HTTP server on \${HOST}:\${PORT}...\`);
     httpServer = app.listen(PORT, HOST, () => {
-      console.log(`[START] ✅ HTTP Server listening on ${HOST}:${PORT}`);
-      logger.info(`Engine HTTP Server listening on ${HOST}:${PORT}`);
-      logger.info(`Health check: http://localhost:${PORT}/health`);
-      logger.info(`API docs: http://localhost:${PORT}/api/docs`);
+      console.log(\`[START] ✅ HTTP Server listening on \${HOST}:\${PORT}\`);
+      logger.info(\`Engine HTTP Server listening on \${HOST}:\${PORT}\`);
+      logger.info(\`Health check: http://localhost:\${PORT}/health\`);
+      logger.info(\`API docs: http://localhost:\${PORT}/api/docs\`);
     });
 
-    // Graceful shutdown handlers
     const gracefulShutdown = async (signal) => {
-      logger.info(`${signal} received. Starting graceful shutdown...`);
-      
-      // Close HTTP server
+      logger.info(\`\${signal} received. Starting graceful shutdown...\`);
       if (httpServer) {
-        httpServer.close(() => {
-          logger.info('HTTP server closed');
-        });
+        httpServer.close(() => { logger.info('HTTP server closed'); });
       }
-
-      // Close database connections
       const { closeDatabase } = require('./config/database');
       const { closeRedis } = require('./config/redis');
-      
       try {
         await closeDatabase();
         logger.info('Database connection closed');
-        
         await closeRedis();
         logger.info('Redis connection closed');
-        
         logger.info('Graceful shutdown complete');
         process.exit(0);
       } catch (error) {
@@ -118,14 +109,10 @@ async function start() {
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-    // Uncaught exception handler
     process.on('uncaughtException', (error) => {
       logger.error('Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
-
-    // Unhandled rejection handler
     process.on('unhandledRejection', (reason, promise) => {
       logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
@@ -140,5 +127,38 @@ async function start() {
   }
 }
 
-// Start the engine
 start();
+EOFINDEX
+
+if grep -q "^HEALTHCHECK" engine/Dockerfile; then
+    sed -i '/^HEALTHCHECK/,/^  CMD/s/^/# /' engine/Dockerfile
+fi
+
+docker rmi arb-engine || true
+docker builder prune -af
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache --pull engine
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+sleep 15
+
+echo "=== Container Status ==="
+docker compose ps
+echo ""
+echo "=== Engine Logs (last 100 lines) ==="
+docker compose logs engine --tail=100
+echo ""
+echo "=== Health Check ==="
+curl -s http://localhost:3000/health || echo "Failed"
+EOFDEPLOY
+
+chmod +x deploy-with-debug-logging.sh
+./deploy-with-debug-logging.sh
+
+═══════════════════════════════════════════════════════════════════════
+
+This will show EXACTLY where the startup fails with detailed error messages.
+
+Look for:
+  ✅ [START] ✅ HTTP Server listening... → SUCCESS
+  ❌ !!! [START] FAILED TO START ENGINE !!! → See error details above it
+
+Send me the complete output!
