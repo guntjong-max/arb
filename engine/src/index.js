@@ -1,5 +1,11 @@
 // src/index.js - Entry point for Arbitrage Bot Engine
+// Early console logging before logger init
+console.log('[STARTUP] Loading environment...');
 require('dotenv').config();
+console.log('[STARTUP] Environment loaded. NODE_ENV:', process.env.NODE_ENV);
+console.log('[STARTUP] DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('[STARTUP] REDIS_URL:', process.env.REDIS_URL ? 'SET' : 'NOT SET');
+
 const logger = require('./config/logger');
 const { createServer } = require('./server');
 const { connectDatabase } = require('./config/database');
