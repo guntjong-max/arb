@@ -71,5 +71,28 @@ grafana_data/
 # Backups
 backups/
 *.sql
+*.sql.gz
 *.dump
 *.rdb
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+
+# Engine
+engine/node_modules/
+engine/dist/
+
+# Worker
+worker/.pytest_cache/
+worker/__pycache__/
+worker/venv/
+
+# CI/CD
+.github/workflows/secrets.yml
