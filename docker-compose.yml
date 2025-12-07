@@ -69,6 +69,7 @@ services:
       POSTGRES_DB: arbitrage_bot
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - arb-network
     healthcheck:
@@ -77,24 +78,41 @@ services:
       timeout: 5s
       retries: 5
 
-  # Nginx - Reverse Proxy
-  nginx:
-    image: nginx:latest
-    container_name: arb-nginx
+  # Frontend - React UI
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: arb-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - "3001:80"
     depends_on:
       - engine
     networks:
       - arb-network
+    environment:
+      - VITE_API_URL=http://localhost:3000
 
-volumes:
-  redis_data:
-  postgres_data:
+  # Worker - Python Playwright Automation
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: arb-worker
+    restart: unless-stopped
+    environment:
+      ENGINE_URL: http://engine:3000
+      REDIS_URL: redis://:redis_dev_password_2024@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    networks:
+      - arb-network
+    volumes:
+      - ./worker:/app:ro
 
   # Nginx - Reverse Proxy
   nginx:
@@ -110,6 +128,7 @@ volumes:
       - ./nginx/logs:/var/log/nginx
     depends_on:
       - engine
+      - frontend
     networks:
       - arb-network
     extra_hosts:
@@ -119,6 +138,10 @@ volumes:
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  redis_data:
+  postgres_data:
 
 networks:
   arb-network:

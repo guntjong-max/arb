@@ -18,13 +18,19 @@ import websocket
 from playwright.sync_api import sync_playwright, Browser, BrowserContext
 
 # Configure logging
+log_handlers = [logging.StreamHandler(sys.stdout)]
+
+# Try to create logs directory and add file handler
+try:
+    os.makedirs('logs', exist_ok=True)
+    log_handlers.append(logging.FileHandler('logs/worker.log'))
+except Exception as e:
+    print(f"Warning: Could not create log file: {e}")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('logs/worker.log')
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger(__name__)
 

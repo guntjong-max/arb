@@ -40,6 +40,9 @@ RUN playwright install chromium
 # Copy worker code
 COPY . .
 
+# Create necessary directories
+RUN mkdir -p logs screenshots
+
 # Create non-root user
 RUN useradd -m -u 1001 worker && \
     chown -R worker:worker /app

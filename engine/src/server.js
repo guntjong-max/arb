@@ -14,6 +14,7 @@ const configRoutes = require('./routes/config.routes');
 const scannerRoutes = require('./routes/scanner.routes');
 const historyRoutes = require('./routes/history.routes');
 const systemRoutes = require('./routes/system.routes');
+const apiRoutes = require('./routes/api.routes');
 
 async function createServer() {
   const app = express();
@@ -54,6 +55,9 @@ async function createServer() {
   app.use('/api/v1/scanner', scannerRoutes);
   app.use('/api/v1/history', historyRoutes);
   app.use('/api/v1/system', systemRoutes);
+  
+  // Minimal UI API routes
+  app.use('/api', apiRoutes);
 
   // Prometheus metrics endpoint
   app.get('/metrics', async (req, res) => {

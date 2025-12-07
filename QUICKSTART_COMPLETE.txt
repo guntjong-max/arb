@@ -1,0 +1,165 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║          SPORTSBOOK AUTOMATION SYSTEM - QUICK START GUIDE                    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 SINGLE COMMAND DEPLOYMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+cd /data/workspace/arb && ./deploy-complete.sh
+
+
+📋 WHAT WAS FIXED
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ docker-compose.yml        - Fixed duplicate nginx, added frontend/worker
+✅ API Endpoints              - Created /api/* routes for UI
+✅ Frontend                   - Added Dockerfile + nginx config
+✅ Worker                     - Fixed crash issues, added error handling
+✅ Database Schema            - Created init.sql with all tables
+✅ Deployment Script          - Automated complete deployment
+
+
+🌐 ACCESS POINTS (After Deployment)
+═══════════════════════════════════════════════════════════════════════════════
+
+Frontend:       http://localhost:3001
+Backend API:    http://localhost:3000
+Health Check:   http://localhost:3000/api/system-health
+API Docs:       http://localhost:3000/api/docs
+NGINX:          http://localhost:80
+
+
+🔍 VERIFICATION COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+# Check all containers running
+docker compose ps
+
+# Test health endpoint
+curl http://localhost:3000/api/system-health
+
+# Expected output:
+# {"status":"healthy","database":"connected","redis":"connected"}
+
+# View logs
+docker compose logs -f engine
+docker compose logs -f worker
+docker compose logs -f frontend
+
+
+📊 EXPECTED SERVICE STATUS
+═══════════════════════════════════════════════════════════════════════════════
+
+arb-engine        Up (healthy)    0.0.0.0:3000->3000/tcp, 3001/tcp
+arb-postgres      Up (healthy)    0.0.0.0:5432->5432/tcp
+arb-redis         Up (healthy)    0.0.0.0:6379->6379/tcp
+arb-frontend      Up              0.0.0.0:3001->80/tcp
+arb-worker        Up              
+arb-nginx         Up (healthy)    0.0.0.0:80->80/tcp, 443/tcp
+
+
+🎨 NEW API ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+POST   /api/login           - Queue account login
+GET    /api/login-status    - Get all account statuses  
+GET    /api/settings        - Load user settings
+POST   /api/settings        - Save user settings
+POST   /api/execute         - Queue bet execution
+GET    /api/bets            - Get bet history
+GET    /api/system-health   - System health check
+
+
+🗄️ DATABASE TABLES CREATED
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ sportsbook_accounts      - Account credentials & status
+✅ profit_config            - Profit/filter settings
+✅ bets                     - Bet execution records
+✅ tier_config              - Tier configurations
+✅ system_config            - System settings
+✅ system_logs              - Audit logs
+✅ jobs                     - Job tracking
+✅ workers                  - Worker management
+✅ arbitrage_opportunities  - Opportunity tracking
+
+
+🔒 MANDATORY RULES IMPLEMENTED
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Bet only positive odds
+✅ Match filter respected (Prematch/Live/All)
+✅ Market filter respected (FT/HT HDP/O/U/1X2)
+✅ Time last bet filter (HT: 35min, FT: 75min)
+✅ Min/Max % filter (default 3-10%)
+✅ Cloudflare bypass enabled
+✅ Stake rounding (0 or 5)
+✅ Live logging
+
+
+🛠️ USEFUL COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (full reset)
+docker compose down -v
+
+# Rebuild specific service
+docker compose build --no-cache <service-name>
+docker compose up -d <service-name>
+
+# View specific service logs
+docker compose logs -f <service-name>
+
+# Restart specific service
+docker compose restart <service-name>
+
+# Access database
+docker compose exec postgres psql -U arbitrage_user -d arbitrage_bot
+
+
+🐛 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Issue: Container keeps restarting
+→ docker compose logs <service-name> --tail=50
+
+Issue: Database connection failed
+→ docker compose exec postgres pg_isready -U arbitrage_user
+
+Issue: Frontend not loading
+→ docker compose build --no-cache frontend && docker compose up -d frontend
+
+Issue: Worker crashing
+→ docker compose logs worker --tail=100
+
+
+✅ SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════════════════════
+
+1. All 6 containers show "Up" status
+2. Health check returns {"status":"healthy"}
+3. Frontend loads at port 3001
+4. Worker shows "Starting job consumption loop..." in logs
+5. No containers in "Restarting" status
+
+
+📚 DOCUMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Detailed Fix Summary:    COMPLETE_FIX_SUMMARY.md
+Deployment Script:       deploy-complete.sh
+Database Schema:         database/init.sql
+API Routes:              engine/src/routes/api.routes.js
+
+
+🎉 READY TO DEPLOY!
+═══════════════════════════════════════════════════════════════════════════════
+
+Run: ./deploy-complete.sh
+
+System will be fully operational in 1-2 minutes!
