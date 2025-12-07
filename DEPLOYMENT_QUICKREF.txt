@@ -1,0 +1,193 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   EXACT BASH COMMANDS TO DEPLOY                              ║
+║                   MINIMAL SPORTSBOOK AUTOMATION SYSTEM                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ OPTION 1: ONE-COMMAND AUTOMATED DEPLOYMENT (RECOMMENDED)                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+cd /data/workspace/arb && ./deploy-minimal.sh
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ OPTION 2: MANUAL STEP-BY-STEP DEPLOYMENT                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+# Step 1: Navigate to workspace
+cd /data/workspace/arb
+
+# Step 2: Clean Slate - Delete All Existing Resources
+docker stop $(docker ps -aq) 2>/dev/null || true
+docker rm $(docker ps -aq) 2>/dev/null || true
+docker volume rm $(docker volume ls -q) 2>/dev/null || true
+docker network rm $(docker network ls -q) 2>/dev/null || true
+docker system prune -af --volumes
+
+# Step 3: Build All Images
+docker-compose -f minimal-docker-compose.yml build --no-cache
+
+# Step 4: Start All Services
+docker-compose -f minimal-docker-compose.yml up -d
+
+# Step 5: Wait for Services to Initialize
+sleep 10
+
+# Step 6: Check Status
+docker-compose -f minimal-docker-compose.yml ps
+
+# Step 7: Test API Health
+curl http://localhost:3001/api/system-health
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ OPTION 3: ALL-IN-ONE COMMAND (COPY & PASTE)                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+cd /data/workspace/arb && docker stop $(docker ps -aq) 2>/dev/null || true && docker rm $(docker ps -aq) 2>/dev/null || true && docker volume rm $(docker volume ls -q) 2>/dev/null || true && docker network rm $(docker network ls -q) 2>/dev/null || true && docker system prune -af --volumes && docker-compose -f minimal-docker-compose.yml build --no-cache && docker-compose -f minimal-docker-compose.yml up -d && sleep 10 && docker-compose -f minimal-docker-compose.yml ps && curl -s http://localhost:3001/api/system-health | python3 -m json.tool
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ AFTER DEPLOYMENT - ACCESS POINTS                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🌐 UI:              http://localhost:3000
+🔌 API:             http://localhost:3001
+❤️  Health Check:   http://localhost:3001/api/system-health
+🔌 WebSocket:       ws://localhost:3001
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ USEFUL COMMANDS AFTER DEPLOYMENT                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+# View all logs (real-time)
+docker-compose -f minimal-docker-compose.yml logs -f
+
+# View specific service logs
+docker-compose -f minimal-docker-compose.yml logs -f api
+docker-compose -f minimal-docker-compose.yml logs -f worker
+docker-compose -f minimal-docker-compose.yml logs -f ui
+
+# Check service status
+docker-compose -f minimal-docker-compose.yml ps
+
+# Restart all services
+docker-compose -f minimal-docker-compose.yml restart
+
+# Restart specific service
+docker-compose -f minimal-docker-compose.yml restart api
+
+# Stop all services
+docker-compose -f minimal-docker-compose.yml down
+
+# Stop and remove volumes
+docker-compose -f minimal-docker-compose.yml down -v
+
+# Execute command in container
+docker-compose -f minimal-docker-compose.yml exec api sh
+docker-compose -f minimal-docker-compose.yml exec postgres psql -U arbuser -d arb_minimal
+
+# Check database
+docker-compose -f minimal-docker-compose.yml exec postgres psql -U arbuser -d arb_minimal -c "SELECT * FROM accounts;"
+docker-compose -f minimal-docker-compose.yml exec postgres psql -U arbuser -d arb_minimal -c "SELECT * FROM settings;"
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TESTING THE SYSTEM                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+# 1. Open browser to UI
+xdg-open http://localhost:3000  # Linux
+# or manually navigate to http://localhost:3000
+
+# 2. Test API endpoints
+curl http://localhost:3001/api/system-health
+curl http://localhost:3001/api/login-status
+curl http://localhost:3001/api/settings
+
+# 3. Test login (Account 1)
+curl -X POST http://localhost:3001/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": 1}'
+
+# 4. Test login (Account 2)
+curl -X POST http://localhost:3001/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": 2}'
+
+# 5. Start scanning
+curl -X POST http://localhost:3001/api/scan/start \
+  -H "Content-Type: application/json"
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TROUBLESHOOTING                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+# If ports are already in use
+sudo lsof -i :3000
+sudo lsof -i :3001
+sudo lsof -i :5432
+sudo lsof -i :6379
+
+# Kill process on port
+sudo kill -9 $(sudo lsof -t -i:3000)
+
+# Check Docker disk space
+docker system df
+
+# Clean up Docker completely
+docker system prune -af --volumes
+
+# View container resource usage
+docker stats
+
+# Check network connectivity
+docker network ls
+docker network inspect arb_network
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ FILES CREATED (21 Total)                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Root:
+  ✅ minimal-docker-compose.yml
+  ✅ minimal-db-init.sql
+  ✅ minimal-nginx.conf
+  ✅ deploy-minimal.sh
+  ✅ DEPLOY_COMMANDS.sh
+  ✅ MINIMAL_README.md
+  ✅ MINIMAL_FILES_SUMMARY.md
+  ✅ DEPLOYMENT_QUICKREF.txt (this file)
+
+minimal-api/:
+  ✅ Dockerfile
+  ✅ package.json
+  ✅ index.js
+
+minimal-worker/:
+  ✅ Dockerfile
+  ✅ requirements.txt
+  ✅ worker.py
+
+minimal-ui/:
+  ✅ Dockerfile
+  ✅ nginx.conf
+  ✅ package.json
+  ✅ vite.config.js
+  ✅ tailwind.config.js
+  ✅ postcss.config.js
+  ✅ index.html
+  ✅ src/main.jsx
+  ✅ src/App.jsx
+  ✅ src/index.css
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          🚀 READY TO DEPLOY! 🚀                              ║
+║                                                                              ║
+║  Choose one of the deployment options above and execute!                    ║
+║  System will be ready at http://localhost:3000 in ~2-3 minutes              ║
+╚══════════════════════════════════════════════════════════════════════════════╝

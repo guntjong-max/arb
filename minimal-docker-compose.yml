@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: arb_minimal
+      POSTGRES_USER: arbuser
+      POSTGRES_PASSWORD: arbpass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./minimal-db-init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - arb_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - arb_network
+
+  api:
+    build:
+      context: ./minimal-api
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://arbuser:arbpass123@postgres:5432/arb_minimal
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - arb_network
+
+  worker:
+    build:
+      context: ./minimal-worker
+      dockerfile: Dockerfile
+    environment:
+      API_URL: http://api:3001
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - api
+      - redis
+    networks:
+      - arb_network
+
+  ui:
+    build:
+      context: ./minimal-ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - arb_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./minimal-nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - ui
+    networks:
+      - arb_network
+
+volumes:
+  postgres_data:
+
+networks:
+  arb_network:
+    driver: bridge
