@@ -3,6 +3,7 @@ import json
 import os
 import random
 import time
+import re
 from datetime import datetime
 from playwright.async_api import async_playwright
 import redis.asyncio as aioredis
@@ -29,13 +30,18 @@ def round_stake(stake):
 
 
 async def login_worker(job_data):
-    """Login to sportsbook site"""
-    account_id = job_data['accountId']
-    url = job_data['url']
-    username = job_data['username']
-    password = job_data['password']
+    """Login to sportsbook site with real browser automation"""
+    account_id = job_data.get('accountId')
+    bookmaker = job_data.get('bookmaker', '').lower()
+    username = job_data.get('username')
+    password = job_data.get('password')
     
-    print(f'[LOGIN] Account {account_id}: Starting login to {url}')
+    print(f'[LOGIN] Account {account_id}: Starting login to {bookmaker}')
+    
+    if not username or not password:
+        print('[LOGIN] Missing credentials')
+        send_result('login_failed', {'accountId': account_id, 'error': 'Missing credentials'})
+        return
     
     try:
         async with async_playwright() as p:
@@ -52,39 +58,173 @@ async def login_worker(job_data):
             
             page = await context.new_page()
             
-            # Navigate to login page
-            await page.goto(url, wait_until='networkidle', timeout=30000)
+            # Route to appropriate bookmaker
+            balance = None
+            if bookmaker == 'bet365':
+                balance = await login_bet365(page, username, password)
+            elif bookmaker == 'pinnacle':
+                balance = await login_pinnacle(page, username, password)
+            elif bookmaker == 'betfair':
+                balance = await login_betfair(page, username, password)
+            else:
+                print(f'[LOGIN] Unsupported bookmaker: {bookmaker}')
+                await browser.close()
+                send_result('login_failed', {'accountId': account_id, 'error': f'Unsupported bookmaker: {bookmaker}'})
+                return
             
-            # Wait for Cloudflare challenge (if any)
-            await asyncio.sleep(5)
-            
-            # Mock login (replace with actual selectors)
-            # await page.fill('#username', username)
-            # await page.fill('#password', password)
-            # await page.click('#login-button')
-            
-            # Simulate successful login
-            await asyncio.sleep(2)
-            
-            # Mock balance
-            balance = round(random.uniform(1000, 5000), 2)
-            
-            # Store session
-            sessions[account_id] = {'context': context, 'page': page, 'browser': browser}
-            
-            print(f'[LOGIN] Account {account_id}: Login successful, balance: {balance}')
-            
-            send_result('login_success', {
-                'accountId': account_id,
-                'balance': balance
-            })
-            
-            # Keep session alive
-            asyncio.create_task(keep_alive(account_id, page))
+            if balance is not None:
+                # Store session
+                sessions[account_id] = {'context': context, 'page': page, 'browser': browser}
+                
+                print(f'[LOGIN] Account {account_id}: Login successful, balance: {balance}')
+                
+                send_result('login_success', {
+                    'accountId': account_id,
+                    'bookmaker': bookmaker,
+                    'username': username,
+                    'balance': balance,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+                # Keep session alive
+                asyncio.create_task(keep_alive(account_id, page))
+            else:
+                await browser.close()
+                print(f'[LOGIN] Account {account_id}: Failed to extract balance')
+                send_result('login_failed', {'accountId': account_id, 'error': 'Failed to extract balance'})
             
     except Exception as e:
         print(f'[LOGIN] Account {account_id}: Login failed - {e}')
         send_result('login_failed', {'accountId': account_id, 'error': str(e)})
+
+
+async def login_bet365(page, username: str, password: str):
+    """Login to Bet365 and extract balance"""
+    try:
+        print('[BET365] Navigating to Bet365...')
+        await page.goto('https://www.bet365.com', wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(2000)
+        
+        # Click login button
+        print('[BET365] Clicking login button...')
+        await page.click('[data-testid="sbk-header-mobile-menu"]', timeout=10000)
+        await page.wait_for_timeout(500)
+        await page.click('text=Login', timeout=10000)
+        await page.wait_for_timeout(1000)
+        
+        # Enter credentials
+        print('[BET365] Entering credentials...')
+        await page.fill('[name="username"]', username, timeout=10000)
+        await page.fill('[name="password"]', password, timeout=10000)
+        await page.click('button[type="submit"]', timeout=10000)
+        
+        # Wait for page to load after login
+        print('[BET365] Waiting for dashboard...')
+        await page.wait_for_url('**/*dashboard**', timeout=15000)
+        await page.wait_for_timeout(2000)
+        
+        # Extract balance
+        print('[BET365] Extracting balance...')
+        balance_text = await page.text_content('[data-testid="account-balance"]', timeout=10000)
+        
+        if balance_text:
+            # Parse balance value (e.g., "£1,234.56" → 1234.56)
+            match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+            if match:
+                balance = float(match.group())
+                print(f'[BET365] Balance extracted: {balance}')
+                return balance
+        
+        print('[BET365] Could not extract balance')
+        return None
+    
+    except Exception as e:
+        print(f'[BET365] Login error: {e}')
+        return None
+
+
+async def login_pinnacle(page, username: str, password: str):
+    """Login to Pinnacle and extract balance"""
+    try:
+        print('[PINNACLE] Navigating to Pinnacle...')
+        await page.goto('https://www.pinnacle.com', wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(2000)
+        
+        # Click login
+        print('[PINNACLE] Clicking login button...')
+        await page.click('text=Sign In', timeout=10000)
+        await page.wait_for_timeout(1000)
+        
+        # Enter credentials
+        print('[PINNACLE] Entering credentials...')
+        await page.fill('input[type="email"]', username, timeout=10000)
+        await page.fill('input[type="password"]', password, timeout=10000)
+        await page.click('button[type="submit"]', timeout=10000)
+        
+        # Wait for dashboard
+        print('[PINNACLE] Waiting for dashboard...')
+        await page.wait_for_url('**/*dashboard**', timeout=15000)
+        await page.wait_for_timeout(2000)
+        
+        # Extract balance
+        print('[PINNACLE] Extracting balance...')
+        balance_text = await page.text_content('[data-testid="player-balance"]', timeout=10000)
+        
+        if balance_text:
+            match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+            if match:
+                balance = float(match.group())
+                print(f'[PINNACLE] Balance extracted: {balance}')
+                return balance
+        
+        print('[PINNACLE] Could not extract balance')
+        return None
+    
+    except Exception as e:
+        print(f'[PINNACLE] Login error: {e}')
+        return None
+
+
+async def login_betfair(page, username: str, password: str):
+    """Login to Betfair and extract balance"""
+    try:
+        print('[BETFAIR] Navigating to Betfair...')
+        await page.goto('https://www.betfair.com', wait_until='domcontentloaded', timeout=30000)
+        await page.wait_for_timeout(2000)
+        
+        # Click login
+        print('[BETFAIR] Clicking login button...')
+        await page.click('button[data-testid="login-button"]', timeout=10000)
+        await page.wait_for_timeout(1000)
+        
+        # Enter credentials
+        print('[BETFAIR] Entering credentials...')
+        await page.fill('input[autocomplete="username"]', username, timeout=10000)
+        await page.fill('input[autocomplete="current-password"]', password, timeout=10000)
+        await page.click('button[data-testid="login-submit"]', timeout=10000)
+        
+        # Wait for dashboard
+        print('[BETFAIR] Waiting for account page...')
+        await page.wait_for_url('**/*my-accounts**', timeout=15000)
+        await page.wait_for_timeout(2000)
+        
+        # Extract balance
+        print('[BETFAIR] Extracting balance...')
+        balance_text = await page.text_content('[data-testid="account-balance"]', timeout=10000)
+        
+        if balance_text:
+            match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+            if match:
+                balance = float(match.group())
+                print(f'[BETFAIR] Balance extracted: {balance}')
+                return balance
+        
+        print('[BETFAIR] Could not extract balance')
+        return None
+    
+    except Exception as e:
+        print(f'[BETFAIR] Login error: {e}')
+        return None
 
 
 async def keep_alive(account_id, page):
