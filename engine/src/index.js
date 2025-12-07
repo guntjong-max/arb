@@ -11,26 +11,46 @@ let httpServer;
 
 async function start() {
   try {
+    console.log('🚀 Starting Arbitrage Bot Engine...');
     logger.info('Starting Arbitrage Bot Engine...');
     logger.info(`Environment: ${process.env.NODE_ENV}`);
     logger.info(`Paper Trading Mode: ${process.env.PAPER_TRADING_MODE}`);
 
     // Initialize metrics
     initializeMetrics();
+    console.log('✅ Metrics initialized');
     logger.info('Metrics initialized');
 
-    // Connect to databases
-    await connectDatabase();
-    logger.info('PostgreSQL connected');
+    // Connect to databases with error handling
+    try {
+      await connectDatabase();
+      console.log('✅ PostgreSQL connected');
+      logger.info('PostgreSQL connected');
+    } catch (dbError) {
+      console.error('⚠️  PostgreSQL connection failed:', dbError.message);
+      logger.error('PostgreSQL connection failed, continuing anyway:', dbError);
+    }
 
-    await connectRedis();
-    logger.info('Redis connected');
+    try {
+      await connectRedis();
+      console.log('✅ Redis connected');
+      logger.info('Redis connected');
+    } catch (redisError) {
+      console.error('⚠️  Redis connection failed:', redisError.message);
+      logger.error('Redis connection failed, continuing anyway:', redisError);
+    }
 
-    // Create and start server
+    // Create and start server - THIS IS CRITICAL
     const app = await createServer();
     const PORT = process.env.PORT || 3000;
     
-    httpServer = app.listen(PORT, () => {
+    httpServer = app.listen(PORT, '0.0.0.0', () => {
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`🚀 SERVER STARTED ON PORT ${PORT}`);
+      console.log(`📍 Health check: http://localhost:${PORT}/health`);
+      console.log(`📚 API docs: http://localhost:${PORT}/api/docs`);
+      console.log(`🔌 API base: http://localhost:${PORT}/api/v1`);
+      console.log('═══════════════════════════════════════════════════════');
       logger.info(`Engine HTTP Server listening on port ${PORT}`);
       logger.info(`Health check: http://localhost:${PORT}/health`);
       logger.info(`API docs: http://localhost:${PORT}/api/docs`);

@@ -26,6 +26,10 @@ async function createServer() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  // Serve static files from public directory
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, '../../public')));
+
   // Request logging middleware
   app.use((req, res, next) => {
     logger.info(`${req.method} ${req.path}`, {
@@ -33,6 +37,12 @@ async function createServer() {
       userAgent: req.get('user-agent')
     });
     next();
+  });
+
+  // Root route - serve dashboard
+  app.get('/', (req, res) => {
+    const indexPath = path.join(__dirname, '../../public/index.html');
+    res.sendFile(indexPath);
   });
 
   // Routes
