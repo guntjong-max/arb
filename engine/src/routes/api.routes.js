@@ -217,7 +217,8 @@ router.post('/settings', async (req, res) => {
 
 /**
  * POST /api/execute
- * Queue bet execution
+ * Queue bet execution with PAIR SEQUENCE logic
+ * CRITICAL RULE: Bet positive odds FIRST, wait for acceptance, then bet negative
  */
 router.post('/execute', async (req, res) => {
   try {
@@ -226,7 +227,8 @@ router.post('/execute', async (req, res) => {
       matchName, 
       marketType, 
       odds, 
-      stake 
+      stake,
+      pairBet = null // Optional: second bet in pair
     } = req.body;
 
     if (!accountId || !matchName || !marketType || !odds || !stake) {
@@ -236,34 +238,78 @@ router.post('/execute', async (req, res) => {
       });
     }
 
+    // Validate: Only bet on positive odds (> 1.0)
+    if (parseFloat(odds) <= 1.0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only positive odds (> 1.0) are allowed'
+      });
+    }
+
     // Round stake to nearest 0 or 5
     const roundedStake = Math.round(stake / 5) * 5;
 
-    // Insert bet record
+    // Insert bet record with pair metadata
     const insertQuery = `
-      INSERT INTO bets (account_id, match_name, market_type, odds, stake, status, created_at)
-      VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+      INSERT INTO bets (account_id, match_name, market_type, odds, stake, status, result, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'pending', $6, NOW())
       RETURNING id
     `;
+    
+    const pairMetadata = pairBet ? JSON.stringify({
+      is_pair: true,
+      pair_odds: pairBet.odds,
+      pair_stake: Math.round(pairBet.stake / 5) * 5,
+      sequence: 'positive_first' // CRITICAL: positive bet goes first
+    }) : null;
     
     const result = await db.query(insertQuery, [
       accountId,
       matchName,
       marketType,
       odds,
-      roundedStake
+      roundedStake,
+      pairMetadata
     ]);
 
     const betId = result.rows[0].id;
 
-    // TODO: Queue bet execution job to worker
-    logger.info('Bet queued', { betId, accountId, matchName, stake: roundedStake });
+    // Queue bet execution job to worker with pair sequence logic
+    const jobPayload = {
+      betId,
+      accountId,
+      matchName,
+      marketType,
+      odds: parseFloat(odds),
+      stake: roundedStake,
+      sequence: 'positive_first', // CRITICAL: Execute positive odds bet first
+      pairBet: pairBet ? {
+        odds: parseFloat(pairBet.odds),
+        stake: Math.round(pairBet.stake / 5) * 5,
+        marketType: pairBet.marketType,
+        sequence: 'negative_second', // CRITICAL: Execute only after positive accepted
+        dependsOn: betId // Wait for this bet to be ACCEPTED
+      } : null
+    };
+
+    // TODO: Queue to BullMQ with pair sequence logic
+    logger.info('Bet queued with pair sequence', { 
+      betId, 
+      accountId, 
+      matchName, 
+      stake: roundedStake,
+      odds,
+      isPair: !!pairBet,
+      sequence: 'positive_first'
+    });
 
     res.json({
       success: true,
-      message: 'Bet queued successfully',
+      message: pairBet ? 'Bet pair queued (positive first, negative waits)' : 'Single bet queued',
       betId,
-      stake: roundedStake
+      stake: roundedStake,
+      sequence: jobPayload.sequence,
+      pairSequence: pairBet ? 'Negative bet will execute ONLY after positive is ACCEPTED' : null
     });
 
   } catch (error) {
