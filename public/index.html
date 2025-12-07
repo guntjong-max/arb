@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArbBot Pro - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 2px solid #22c55e;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #22c55e;
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+
+        .header .subtitle {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            flex: 1;
+        }
+
+        .status-bar {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #334155;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .led.online {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .led.offline {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+
+        .led.connecting {
+            background: #eab308;
+            box-shadow: 0 0 8px #eab308;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #22c55e;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: #22c55e;
+            color: #0f172a;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .btn:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #475569;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #334155;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            color: #86efac;
+        }
+
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.2);
+            border: 1px solid #eab308;
+            color: #fde047;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+
+        .accounts-list {
+            margin-top: 1rem;
+        }
+
+        .account-item {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            border: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-name {
+            font-weight: 600;
+            color: #22c55e;
+            margin-bottom: 0.25rem;
+        }
+
+        .account-balance {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: #64748b;
+            font-size: 0.85rem;
+            border-top: 1px solid #334155;
+            margin-top: auto;
+        }
+
+        .retry-btn {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ ArbBot Pro</h1>
+        <div class="subtitle">Advanced Arbitrage Trading Dashboard</div>
+    </div>
+
+    <div class="container">
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="led connecting" id="statusLed"></div>
+                <span id="statusText">Connecting to backend...</span>
+            </div>
+            <div id="apiInfo" style="font-size: 0.85rem; color: #64748b;"></div>
+        </div>
+
+        <!-- Account Manager Panel -->
+        <div class="panel">
+            <h2>🔐 Account Manager</h2>
+            <div id="accountContent">
+                <div class="loading">
+                    <p>Loading account manager...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>ArbBot Pro v1.0 | Powered by Advanced Trading Algorithms</p>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin + '/api';
+        let backendOnline = false;
+        let accounts = [];
+
+        // DOM Elements
+        const statusLed = document.getElementById('statusLed');
+        const statusText = document.getElementById('statusText');
+        const apiInfo = document.getElementById('apiInfo');
+        const accountContent = document.getElementById('accountContent');
+
+        // Update status indicator
+        function updateStatus(status, message) {
+            statusLed.className = 'led';
+            if (status === 'online') {
+                statusLed.classList.add('online');
+                backendOnline = true;
+            } else if (status === 'offline') {
+                statusLed.classList.add('offline');
+                backendOnline = false;
+            } else {
+                statusLed.classList.add('connecting');
+            }
+            statusText.textContent = message;
+        }
+
+        // Show alert
+        function showAlert(message, type = 'error') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            accountContent.insertBefore(alertDiv, accountContent.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Render login form
+        function renderLoginForm() {
+            accountContent.innerHTML = `
+                ${!backendOnline ? `
+                    <div class="alert alert-warning">
+                        ⚠️ Backend is currently offline. You can still use the form, but login will not work until backend is connected.
+                    </div>
+                ` : ''}
+                
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="sportsbook">Sportsbook</label>
+                        <select id="sportsbook" name="sportsbook" required>
+                            <option value="">Select a sportsbook...</option>
+                            <option value="draftkings">DraftKings</option>
+                            <option value="fanduel">FanDuel</option>
+                            <option value="betmgm">BetMGM</option>
+                            <option value="caesars">Caesars</option>
+                            <option value="bet365">Bet365</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter username" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter password" required />
+                    </div>
+
+                    <button type="submit" class="btn" ${!backendOnline ? 'disabled' : ''}>
+                        ${backendOnline ? '🔑 Login' : '⏳ Waiting for Backend...'}
+                    </button>
+                </form>
+
+                ${!backendOnline ? `
+                    <button class="btn btn-secondary retry-btn" onclick="checkBackendStatus()">
+                        🔄 Retry Connection
+                    </button>
+                ` : ''}
+
+                <div class="accounts-list" id="accountsList">
+                    ${accounts.length > 0 ? '<h3 style="margin-top: 1.5rem; color: #cbd5e1;">Connected Accounts</h3>' : ''}
+                </div>
+            `;
+
+            if (accounts.length > 0) {
+                renderAccounts();
+            }
+        }
+
+        // Render accounts list
+        function renderAccounts() {
+            const accountsList = document.getElementById('accountsList');
+            if (!accountsList) return;
+
+            accountsList.innerHTML = accounts.map(account => `
+                <div class="account-item">
+                    <div class="account-info">
+                        <div class="account-name">${account.sportsbook}</div>
+                        <div class="account-balance">Balance: $${account.balance || '0.00'} | Status: ${account.status || 'Active'}</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="refreshAccount('${account.id}')">
+                        🔄 Refresh
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Handle login
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            if (!backendOnline) {
+                showAlert('Backend is offline. Please wait for connection.', 'error');
+                return;
+            }
+
+            const formData = new FormData(event.target);
+            const loginData = {
+                sportsbook: formData.get('sportsbook'),
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/v1/sessions/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showAlert(`✅ Successfully logged into ${loginData.sportsbook}!`, 'success');
+                    event.target.reset();
+                    await loadAccounts();
+                } else {
+                    showAlert(`❌ Login failed: ${result.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert(`❌ Network error: ${error.message}`, 'error');
+                updateStatus('offline', 'Backend disconnected');
+                renderLoginForm();
+            }
+        }
+
+        // Load accounts from API
+        async function loadAccounts() {
+            try {
+                const response = await fetch(`${API_BASE}/v1/sessions`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    accounts = data.accounts || data || [];
+                    renderLoginForm();
+                } else {
+                    console.error('Failed to load accounts:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        // Refresh single account
+        async function refreshAccount(accountId) {
+            try {
+                const response = await fetch(`${API_BASE}/v1/sessions/${accountId}/refresh`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showAlert('✅ Account refreshed successfully!', 'success');
+                    await loadAccounts();
+                } else {
+                    showAlert('❌ Failed to refresh account', 'error');
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+                showAlert('❌ Network error during refresh', 'error');
+            }
+        }
+
+        // Check backend status
+        async function checkBackendStatus() {
+            updateStatus('connecting', 'Checking backend connection...');
+            apiInfo.textContent = `API: ${API_BASE}`;
+
+            try {
+                const response = await fetch(`${API_BASE}/v1/sessions`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    updateStatus('online', 'Backend connected');
+                    await loadAccounts();
+                    renderLoginForm();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Backend connection error:', error);
+                updateStatus('offline', 'Backend disconnected (Offline Mode)');
+                renderLoginForm();
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 ArbBot Pro Dashboard Loaded');
+            console.log(`📡 API Base: ${API_BASE}`);
+            checkBackendStatus();
+
+            // Retry connection every 10 seconds if offline
+            setInterval(() => {
+                if (!backendOnline) {
+                    console.log('🔄 Retrying backend connection...');
+                    checkBackendStatus();
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
