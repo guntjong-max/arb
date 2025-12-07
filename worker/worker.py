@@ -11,11 +11,13 @@ import json
 import logging
 import signal
 import uuid
+import re
 from typing import Dict, Any, Optional
+from datetime import datetime
 from dotenv import load_dotenv
 import redis
 import websocket
-from playwright.sync_api import sync_playwright, Browser, BrowserContext
+from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
 # Configure logging
 logging.basicConfig(
@@ -111,7 +113,7 @@ class WorkerBot:
             'type': 'worker:register',
             'worker_id': self.worker_id,
             'proxy_info': self.proxy_config,
-            'capabilities': ['test', 'place_bet', 'check_odds']
+            'capabilities': ['test', 'login', 'place_bet', 'check_odds']
         }
         
         logger.info(f"Worker registration message: {registration_msg}")
@@ -201,6 +203,8 @@ class WorkerBot:
             # Route to appropriate handler
             if job_type == 'test':
                 return self._handle_test_job(payload)
+            elif job_type == 'login':
+                return self._handle_login(payload)
             elif job_type == 'place_bet':
                 return self._handle_place_bet(payload)
             elif job_type == 'check_odds':
@@ -274,6 +278,148 @@ class WorkerBot:
             'payload': payload,
             'note': 'Full implementation pending in Phase 3'
         }
+    
+    def _handle_login(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle login for various sportsbooks"""
+        bookmaker = payload.get('bookmaker', '').lower()
+        username = payload.get('username')
+        password = payload.get('password')
+        url = payload.get('url')
+        
+        if not username or not password or not url:
+            return {
+                'status': 'error',
+                'message': 'Missing credentials or URL'
+            }
+        
+        try:
+            # Create a new page for login
+            page = self.context.new_page()
+            page.goto(url, wait_until='networkidle')
+            
+            balance = None
+            
+            # Detect bookmaker and use appropriate login method
+            if 'qq188' in bookmaker or 'qq188' in url:
+                balance = self._login_qq188(page, username, password)
+            elif 'bet365' in bookmaker or 'bet365' in url:
+                balance = self._login_bet365(page, username, password)
+            elif 'pinnacle' in bookmaker or 'pinnacle' in url:
+                balance = self._login_pinnacle(page, username, password)
+            elif 'betfair' in bookmaker or 'betfair' in url:
+                balance = self._login_betfair(page, username, password)
+            else:
+                # Fallback to QQ188 logic for unknown bookmakers
+                logger.info(f"Unknown bookmaker '{bookmaker}', trying QQ188 login logic")
+                balance = self._login_qq188(page, username, password)
+            
+            page.close()
+            
+            if balance is not None:
+                return {
+                    'status': 'success',
+                    'bookmaker': bookmaker,
+                    'username': username,
+                    'balance': balance,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {
+                    'status': 'error',
+                    'message': 'Failed to extract balance'
+                }
+        
+        except Exception as e:
+            logger.error(f"Login failed: {str(e)}", exc_info=True)
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
+    
+    def _login_qq188(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to QQ188 and extract balance"""
+        try:
+            # Page already loaded by caller
+            page.wait_for_timeout(2000)
+            
+            # 1. Find and click LOGIN/MASUK button
+            login_clicked = page.evaluate("""() => {
+                const elements = Array.from(document.querySelectorAll('a, button, span, div'));
+                const target = elements.find(el => {
+                    const txt = el.innerText ? el.innerText.trim().toUpperCase() : '';
+                    return txt === 'LOGIN' || txt === 'MASUK';
+                });
+                if (target) { target.click(); return true; }
+                return false;
+            }""")
+            
+            if not login_clicked:
+                logger.warning("QQ188: Login button not found")
+                return None
+            
+            page.wait_for_timeout(3000)
+            
+            # 2. Input username & password
+            page.wait_for_selector('input[type="text"]', timeout=10000)
+            text_inputs = page.query_selector_all('input[type="text"]')
+            
+            if text_inputs:
+                text_inputs[0].fill(username)
+            
+            page.fill('input[type="password"]', password)
+            page.keyboard.press('Enter')
+            
+            logger.info("QQ188: Login processing...")
+            page.wait_for_timeout(10000)
+            
+            # 3. Find balance (IDR + format XXX,XXX.XX)
+            saldo_data = page.evaluate("""() => {
+                const allElements = Array.from(document.querySelectorAll('span, div, b, strong'));
+                
+                const candidates = allElements.filter(el => {
+                    const text = el.innerText;
+                    if (!text) return false;
+                    return text.includes('IDR') && 
+                           /[\d,]+\.\d{2}/.test(text) && 
+                           text.length < 20;
+                });
+                
+                const texts = candidates.map(el => el.innerText.trim());
+                return texts.length > 0 ? texts : ["Saldo Tidak Ketemu"];
+            }""")
+            
+            logger.info(f"QQ188: Balance candidates: {saldo_data}")
+            
+            if saldo_data and saldo_data[0] != "Saldo Tidak Ketemu":
+                # Extract number from "IDR 1,234.56" format
+                match = re.search(r'[\d,]+\.\d{2}', saldo_data[0])
+                if match:
+                    balance_str = match.group().replace(',', '')
+                    return float(balance_str)
+            
+            return None
+        
+        except Exception as e:
+            logger.error(f"QQ188 login error: {str(e)}", exc_info=True)
+            return None
+    
+    def _login_bet365(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Bet365 and extract balance (stub)"""
+        logger.info("Bet365 login (stub - not implemented)")
+        # TODO: Implement Bet365 login logic
+        return None
+    
+    def _login_pinnacle(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Pinnacle and extract balance (stub)"""
+        logger.info("Pinnacle login (stub - not implemented)")
+        # TODO: Implement Pinnacle login logic
+        return None
+    
+    def _login_betfair(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Betfair and extract balance (stub)"""
+        logger.info("Betfair login (stub - not implemented)")
+        # TODO: Implement Betfair login logic
+        return None
     
     def _report_result(self, job_id: str, result: Dict[str, Any]):
         """Report job result back to engine"""
