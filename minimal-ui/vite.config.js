@@ -5,7 +5,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
+      },
+      '/ws': {
+        target: 'ws://localhost:3000',
+        ws: true
+      }
+    }
   },
   build: {
     outDir: 'dist',
@@ -18,5 +28,9 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[hash].[ext]'
       }
     }
+  },
+  define: {
+    __API_URL__: JSON.stringify(process.env.VITE_API_URL || 'http://localhost:3000'),
+    __WS_URL__: JSON.stringify(process.env.VITE_API_WS_URL || 'ws://localhost:3000')
   }
 })
