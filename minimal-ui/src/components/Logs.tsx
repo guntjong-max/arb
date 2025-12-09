@@ -14,18 +14,18 @@ export const Logs: React.FC<LogsProps> = ({ logs }) => {
   }, [logs]);
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-xl flex flex-col h-full">
-      <div className="bg-gray-800/50 p-3 border-b border-gray-700 flex justify-between items-center">
-        <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider flex items-center">
+    <div className="bg-slate-900/80 rounded-xl border border-slate-800 overflow-hidden shadow-sm flex flex-col h-full">
+      <div className="bg-slate-800/50 p-3 border-b border-slate-700 flex justify-between items-center">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center">
           <Terminal className="w-4 h-4 mr-2 text-indigo-400" /> System Logs
         </h2>
-        <span className="text-[10px] text-gray-500 font-mono">{logs.length} entries</span>
+        <span className="text-[10px] text-slate-500 font-mono">{logs.length} entries</span>
       </div>
       
       <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] space-y-1 custom-scrollbar bg-black/20">
-        {logs.length === 0 && <div className="text-gray-600 text-center mt-10">Waiting for logs...</div>}
+        {logs.length === 0 && <div className="text-slate-600 text-center mt-10">Waiting for logs...</div>}
         {logs.map((log) => {
-          let color = 'text-gray-400';
+          let color = 'text-slate-400';
           if (log.level === 'INFO') color = 'text-blue-400';
           if (log.level === 'WARN') color = 'text-yellow-400';
           if (log.level === 'ERROR') color = 'text-red-400';
@@ -33,9 +33,9 @@ export const Logs: React.FC<LogsProps> = ({ logs }) => {
 
           return (
             <div key={log.id} className="flex space-x-2 hover:bg-white/5 p-0.5 rounded">
-              <span className="text-gray-600 shrink-0">[{log.timestamp}]</span>
+              <span className="text-slate-600 shrink-0">[{log.timestamp}]</span>
               <span className={`font-bold shrink-0 w-14 ${color}`}>{log.level}</span>
-              <span className="text-gray-300 break-all">{log.message}</span>
+              <span className="text-slate-300 break-all">{log.message}</span>
             </div>
           );
         })}
