@@ -24,18 +24,18 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({
   const [url, setUrl] = useState('https://www.sportsbook.com');
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-xl mb-4">
+    <div className="bg-slate-900/80 rounded-xl border border-slate-800 overflow-hidden shadow-sm">
       {/* Header Panel */}
-      <div className="bg-gray-800/50 p-3 border-b border-gray-700">
+      <div className="bg-slate-800/50 p-3 border-b border-slate-700">
         <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider flex items-center">
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center">
             <User className="w-4 h-4 mr-2 text-indigo-400" /> {label}
             </h2>
             
             <div className="flex items-center space-x-2">
                 {/* Ping */}
                 <div className="flex items-center space-x-1" title="Network Latency">
-                    <Activity className="w-3 h-3 text-gray-600" />
+                    <Activity className="w-3 h-3 text-slate-600" />
                     <span className={`text-xs font-mono font-bold ${(ping || 0) < 100 ? 'text-green-500' : (ping || 0) < 300 ? 'text-yellow-500' : 'text-red-500'}`}>
                         {ping || 0}ms
                     </span>
@@ -46,8 +46,8 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({
         </div>
 
         {/* Balance Display inside Panel */}
-        <div className="bg-gray-950/80 rounded-lg p-2 flex items-center justify-between border border-gray-800">
-            <div className="flex items-center text-gray-500 text-xs">
+        <div className="bg-slate-950/80 rounded-lg p-2 flex items-center justify-between border border-slate-800">
+            <div className="flex items-center text-slate-500 text-xs">
                 <Wallet className="w-3 h-3 mr-1.5" /> Balance
             </div>
             <div className="text-emerald-400 font-mono font-bold text-sm tracking-wide">
@@ -56,20 +56,20 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({
         </div>
       </div>
       
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Inputs */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           
           {/* Sportsbook Manual Input */}
           <div>
-            <label className="block text-[10px] uppercase text-gray-500 mb-1 font-bold">Sportsbook Name</label>
+            <label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold tracking-wide">Sportsbook Name</label>
             <div className="relative">
-              <Globe className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+              <Globe className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
               <input 
                 type="text"
                 value={sportsbook}
                 onChange={(e) => setSportsbook(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5"
+                className="w-full bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5"
                 placeholder="Enter Site Name"
               />
             </div>
@@ -77,32 +77,32 @@ export const AccountPanel: React.FC<AccountPanelProps> = ({
 
           {/* URL Input */}
           <div>
-            <label className="block text-[10px] uppercase text-gray-500 mb-1 font-bold">Site URL</label>
+            <label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold tracking-wide">Site URL</label>
             <div className="relative">
-              <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+              <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
               <input 
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5"
+                className="w-full bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5"
                 placeholder="https://..."
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] uppercase text-gray-500 mb-1 font-bold">Username</label>
+              <label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold tracking-wide">Username</label>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                <input type="text" className="w-full bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5" placeholder="User" />
+                <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <input type="text" className="w-full bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5" placeholder="User" />
               </div>
             </div>
             <div>
-              <label className="block text-[10px] uppercase text-gray-500 mb-1 font-bold">Password</label>
+              <label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold tracking-wide">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
-                <input type="password" className="w-full bg-gray-950 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5" placeholder="••••" />
+                <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+                <input type="password" className="w-full bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block pl-9 p-2.5" placeholder="••••" />
               </div>
             </div>
           </div>

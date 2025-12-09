@@ -292,13 +292,13 @@ function App() {
   }, [addLog]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-slate-200 font-sans pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-950 to-gray-950 text-slate-200 font-sans pb-8">
       
       <Header health={health} totalBalance={account1.balance + account2.balance} />
 
-      <main className="max-w-7xl mx-auto p-4 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Left Column: Accounts & Config (3 cols) */}
           <div className="lg:col-span-3 space-y-4 flex flex-col">
@@ -339,7 +339,7 @@ function App() {
                 currentBalance={account1.balance + account2.balance}
               />
             </div>
-            <div className="h-64">
+            <div className="h-72">
               <Logs logs={logs} />
             </div>
           </div>
