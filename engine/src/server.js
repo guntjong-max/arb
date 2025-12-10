@@ -128,6 +128,32 @@ async function createServer() {
     });
   });
 
+  // --- API COMPATIBILITY LAYER (Aliases) ---
+  // Alias agar frontend yang request ke /api/system-health diarahkan ke /api/v1/system/health
+  app.get('/api/system-health', (req, res) => {
+    res.redirect(307, '/api/v1/system/health');
+  });
+
+  // Alias settings -> config
+  app.get('/api/settings', (req, res) => {
+    res.redirect(307, '/api/v1/config/system'); // Asumsi config system ada di sini
+  });
+  
+  app.post('/api/settings', (req, res) => {
+    res.redirect(307, '/api/v1/config/system');
+  });
+
+  // Alias bets -> history
+  app.get('/api/bets', (req, res) => {
+    res.redirect(307, '/api/v1/history/bets');
+  });
+
+  // Alias login-status -> sessions
+  app.get('/api/login-status', (req, res) => {
+    res.redirect(307, '/api/v1/sessions'); 
+  });
+  // -----------------------------------------
+
   // 404 handler
   app.use((req, res) => {
     res.status(404).json({
