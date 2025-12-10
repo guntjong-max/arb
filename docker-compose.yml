@@ -77,6 +77,50 @@ services:
       timeout: 5s
       retries: 5
 
+  # Backend - Python FastAPI Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: arb-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://arbitrage_user:arbitrage_dev_password_2024@postgres:5432/arbitrage_bot
+      REDIS_URL: redis://:redis_dev_password_2024@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - arb-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Worker - Automation Tasks
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: arb-worker
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+      REDIS_URL: redis://:redis_dev_password_2024@redis:6379
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - arb-network
+
   # UI - Frontend Application
   ui:
     build:
@@ -88,6 +132,7 @@ services:
       - "8080:80"
     depends_on:
       - engine
+      - backend
     networks:
       - arb-network
     healthcheck:

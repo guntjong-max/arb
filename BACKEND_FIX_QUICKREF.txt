@@ -1,0 +1,174 @@
+╔════════════════════════════════════════════════════════════════╗
+║        BACKEND HEALTHCHECK FIX - QUICK REFERENCE               ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 PROBLEM SOLVED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Backend berjalan normal tapi Docker mark sebagai "unhealthy"
+→ Penyebab: python:3.11-slim tidak punya curl
+→ Solusi: Install curl di Dockerfile
+
+✅ FILES CREATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. backend/Dockerfile          → Dengan curl terinstall
+2. backend/main.py             → Sample FastAPI app
+3. backend/requirements.txt    → Python dependencies
+4. docker-compose.yml          → Updated dengan backend service
+5. deploy-backend.sh           → Script deployment otomatis
+
+🚀 DEPLOY (PILIH SALAH SATU)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Option 1: AUTOMATED (Recommended)
+────────────────────────────────────────────────────────────────
+cd /data/workspace/arb
+./deploy-backend.sh
+
+
+Option 2: MANUAL
+────────────────────────────────────────────────────────────────
+cd /data/workspace/arb
+docker-compose build --no-cache backend
+docker-compose up -d backend
+
+
+Option 3: ALL SERVICES
+────────────────────────────────────────────────────────────────
+cd /data/workspace/arb
+docker-compose up -d --build
+
+
+✅ VERIFY SUCCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Check Container Status
+   docker-compose ps
+   → arb-backend should show: Up (healthy) ✅
+
+2. Check Health Status
+   docker inspect arb-backend --format='{{.State.Health.Status}}'
+   → Output: healthy ✅
+
+3. Test Health Endpoint
+   curl http://localhost:8000/health
+   → Output: {"status":"healthy","service":"backend"} ✅
+
+4. Check Backend Logs
+   docker-compose logs backend
+   → Should see: "Uvicorn running on http://0.0.0.0:8000" ✅
+
+5. Check Worker Started
+   docker-compose ps worker
+   → arb-worker should be Up (not waiting anymore) ✅
+
+
+🔍 KEY CHANGES IN Dockerfile
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BEFORE (BROKEN):
+────────────────────────────────────────────────────────────────
+FROM python:3.11-slim
+# ... no curl ...
+HEALTHCHECK CMD curl -f http://localhost:8000/health
+→ ERROR: curl: command not found
+→ STATUS: unhealthy ❌
+
+
+AFTER (FIXED):
+────────────────────────────────────────────────────────────────
+FROM python:3.11-slim
+
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
+→ SUCCESS: curl available
+→ STATUS: healthy ✅
+
+
+🛠️ TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Problem: Backend still unhealthy
+────────────────────────────────────────────────────────────────
+# Check if curl is installed
+docker exec arb-backend which curl
+
+# If not found, rebuild
+docker-compose build --no-cache backend
+docker-compose up -d backend
+
+
+Problem: Worker not starting
+────────────────────────────────────────────────────────────────
+# Check backend health first
+docker inspect arb-backend --format='{{.State.Health.Status}}'
+
+# If unhealthy, check logs
+docker-compose logs backend
+
+
+Problem: Port 8000 already in use
+────────────────────────────────────────────────────────────────
+# Check what's using port
+sudo lsof -i :8000
+
+# Change port in docker-compose.yml
+ports:
+  - "8001:8000"
+
+
+📊 EXPECTED FINAL STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+$ docker-compose ps
+
+NAME            STATUS
+─────────────────────────────────
+arb-postgres    Up (healthy)
+arb-redis       Up (healthy)
+arb-engine      Up (healthy)
+arb-backend     Up (healthy)  ← FIXED!
+arb-worker      Up            ← NOW RUNNING!
+arb-ui          Up (healthy)
+arb-nginx       Up (healthy)
+
+
+📖 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Full docs (English):  BACKEND_HEALTHCHECK_FIX.md
+Full docs (Bahasa):   PERBAIKAN_HEALTHCHECK_BACKEND.md
+Quick reference:      BACKEND_FIX_QUICKREF.txt (this file)
+
+
+⚡ USEFUL COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# View all containers
+docker-compose ps
+
+# View backend logs
+docker-compose logs -f backend
+
+# View worker logs
+docker-compose logs -f worker
+
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Restart backend
+docker-compose restart backend
+
+# Rebuild and restart
+docker-compose build --no-cache backend && docker-compose up -d backend
+
+# Stop all services
+docker-compose down
+
+# Start all services
+docker-compose up -d
+
+
+✅ STATUS: COMPLETE
+Impact: Backend healthcheck fixed, worker can now start
+Breaking Changes: None - new service added
