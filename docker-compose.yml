@@ -1,130 +1,140 @@
 version: '3.8'
 
 services:
-  # Engine - Main API and Task Dispatcher
-  engine:
+  # Backend - FastAPI WebSocket Server
+  backend:
     build:
-      context: ./engine
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: arb-engine
+    container_name: sportsbook-backend
     restart: unless-stopped
     ports:
-      - "3000:3000" # API
-      - "3001:3001" # WebSocket
+      - "8000:8000"
     environment:
-      NODE_ENV: development
-      PORT: 3000
-      WS_PORT: 3001
-      REDIS_URL: redis://:redis_dev_password_2024@redis:6379
-      DATABASE_URL: postgresql://arbitrage_user:arbitrage_dev_password_2024@postgres:5432/arbitrage_bot
-      JWT_SECRET: your_jwt_secret_key_here
-      SESSION_SECRET: your_session_secret_key_here
-      LOG_LEVEL: info
-      PAPER_TRADING_MODE: "true"
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./engine/logs:/app/logs
-      - ./engine/src:/app/src:ro
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
     networks:
-      - arb-network
+      - sportsbook-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
-  # Redis - Job Queue and Cache
+  # Redis - Optional for future job queue
   redis:
     image: redis:7-alpine
-    container_name: arb-redis
+    container_name: sportsbook-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --requirepass redis_dev_password_2024
+    command: redis-server --requirepass redis_password_2024
     volumes:
       - redis_data:/data
     networks:
-      - arb-network
+      - sportsbook-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis_dev_password_2024", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redis_password_2024", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Database - PostgreSQL
-  postgres:
-    image: postgres:15-alpine
-    container_name: arb-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: arbitrage_user
-      POSTGRES_PASSWORD: arbitrage_dev_password_2024
-      POSTGRES_DB: arbitrage_bot
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - arb-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arbitrage_user -d arbitrage_bot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # UI - Frontend Application
-  ui:
+  # Worker: SBO (SBOBet)
+  worker-sbo:
     build:
-      context: ./minimal-ui
+      context: ./worker
       dockerfile: Dockerfile
-    container_name: arb-ui
+    container_name: sportsbook-worker-sbo
     restart: unless-stopped
-    ports:
-      - "8080:80"
+    environment:
+      - SITE=sbo
+      - BACKEND_WS_URL=ws://backend:8000/ws
+      - SCRAPE_INTERVAL=30
+      - PYTHONUNBUFFERED=1
     depends_on:
-      - engine
+      backend:
+        condition: service_healthy
     networks:
-      - arb-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - sportsbook-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
-  # Nginx - Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: arb-nginx
+  # Worker: IBC (IBCBet)
+  worker-ibc:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: sportsbook-worker-ibc
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/logs:/var/log/nginx
+    environment:
+      - SITE=ibc
+      - BACKEND_WS_URL=ws://backend:8000/ws
+      - SCRAPE_INTERVAL=30
+      - PYTHONUNBUFFERED=1
     depends_on:
-      - engine
-      - ui
+      backend:
+        condition: service_healthy
     networks:
-      - arb-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - sportsbook-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Worker: CMD (CMD368)
+  worker-cmd:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: sportsbook-worker-cmd
+    restart: unless-stopped
+    environment:
+      - SITE=cmd
+      - BACKEND_WS_URL=ws://backend:8000/ws
+      - SCRAPE_INTERVAL=30
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - sportsbook-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Add more workers by copying the pattern above
+  # Just change the service name and SITE environment variable
+  # Example for adding Pinnacle:
+  # worker-pinnacle:
+  #   build:
+  #     context: ./worker
+  #     dockerfile: Dockerfile
+  #   container_name: sportsbook-worker-pinnacle
+  #   restart: unless-stopped
+  #   environment:
+  #     - SITE=pinnacle
+  #     - BACKEND_WS_URL=ws://backend:8000/ws
+  #     - SCRAPE_INTERVAL=30
+  #     - PYTHONUNBUFFERED=1
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   networks:
+  #     - sportsbook-network
 
 volumes:
   redis_data:
-  postgres_data:
 
 networks:
-  arb-network:
+  sportsbook-network:
     driver: bridge

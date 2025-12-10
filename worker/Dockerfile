@@ -1,7 +1,5 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
 # Install system dependencies for Playwright
 RUN apt-get update && apt-get install -y \
     wget \
@@ -28,22 +26,30 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Create non-root user FIRST (CRITICAL: before installing Playwright)
+RUN useradd -m -u 1001 worker
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Set working directory and ownership
+WORKDIR /app
+RUN chown -R worker:worker /app
 
-# Install Playwright browsers
-RUN playwright install chromium
+# Switch to worker user BEFORE installing Playwright
+USER worker
+
+# Copy requirements as worker user
+COPY --chown=worker:worker requirements.txt .
+
+# Install Python dependencies as worker user
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# CRITICAL: Install Playwright browsers as worker user
+# This ensures browsers are installed in /home/worker/.cache/ms-playwright
+RUN /home/worker/.local/bin/playwright install chromium
 
 # Copy worker code
-COPY . .
+COPY --chown=worker:worker . .
 
-# Create non-root user
-RUN useradd -m -u 1001 worker && \
-    chown -R worker:worker /app
-
-USER worker
+# Make sure PATH includes user's local bin
+ENV PATH="/home/worker/.local/bin:${PATH}"
 
 CMD ["python", "worker.py"]
