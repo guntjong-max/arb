@@ -34,12 +34,26 @@ export interface BetConfig {
 
 export interface LiveOpp {
   id: string;
-  match: string;
-  league: string;
-  oddsA: number;
-  oddsB: number;
-  profit: number;
   time: string;
+  profit: number;
+  legs: [
+    {
+      site: string;
+      match: string;
+      league: string;
+      market: string; // e.g., HT/HDP
+      pick: string;   // e.g., 0.25 or -0.25
+      odds: number;
+    },
+    {
+      site: string;
+      match: string;
+      league: string;
+      market: string;
+      pick: string;
+      odds: number;
+    }
+  ];
 }
 
 export interface BetHistory {
