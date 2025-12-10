@@ -65,12 +65,12 @@ export const ExecutionHistory: React.FC<ExecutionHistoryProps> = ({ history }) =
                                                 </span>
                                             </td>
                                             <td className="p-3 font-mono text-gray-500">{bet.time}</td>
-                                            <td className="p-3 font-bold text-gray-400">{bet.pairSite}</td>
+                                            <td className="p-3 font-bold text-gray-400">{bet.pairSite || bet.provider}</td>
                                             <td className="p-3 text-gray-300">{bet.match.away}</td>
                                             <td className="p-3 text-indigo-300">
                                                 {bet.type} {bet.pick.replace('-', '+')}
                                             </td>
-                                            <td className="p-3 text-right font-mono text-gray-300">{bet.pairOdds.toFixed(2)}</td>
+                                            <td className="p-3 text-right font-mono text-gray-300">{bet.pairOdds ? bet.pairOdds.toFixed(2) : bet.odds.toFixed(2)}</td>
                                             <td className="p-3 text-right font-mono text-gray-300">{bet.stake}</td>
                                         </tr>
                                     </React.Fragment>
