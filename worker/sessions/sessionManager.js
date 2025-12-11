@@ -287,39 +287,145 @@ const sessionManager = {
     try {
       logger.debug(`Performing login for ${provider.name}`);
       
-      // Provider-specific login logic would go here
-      // This is a generic implementation that needs to be customized
-      
       const { username, password } = credentials;
       
       // Wait for page to load
       await browserService.waitForLoadState(page, 'networkidle');
       
-      // Generic login attempt (should be customized per provider)
+      // Q88/QQ188 specific login flow
       try {
-        // Look for username/email field
-        const usernameSelector = 'input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]';
-        await browserService.waitForSelector(page, usernameSelector, { timeout: 5000 });
+        logger.info('Starting Q88 login flow...');
+        
+        // Step 1: Check if "MASUK" button exists (login modal trigger)
+        logger.debug('Step 1: Looking for MASUK button...');
+        const masukButton = page.locator('text="MASUK"').first();
+        
+        try {
+          // Wait briefly to see if button exists
+          await masukButton.waitFor({ state: 'visible', timeout: 3000 });
+          logger.info('MASUK button found, clicking to open login modal...');
+          await masukButton.click();
+          
+          // Wait for modal to appear
+          await page.waitForTimeout(1000);
+        } catch (error) {
+          logger.debug('MASUK button not found or already logged in, continuing...');
+        }
+        
+        // Step 2: Wait for login form to appear
+        logger.debug('Step 2: Waiting for login form...');
+        const usernameSelector = 'input[name*="user"], input[placeholder*="Nama"], input[type="text"]:visible';
+        await browserService.waitForSelector(page, usernameSelector, { timeout: 10000 });
+        
+        // Step 3: Fill in credentials
+        logger.debug('Step 3: Filling credentials...');
         await browserService.fill(page, usernameSelector, username);
         
-        // Look for password field
-        const passwordSelector = 'input[type="password"]';
+        const passwordSelector = 'input[type="password"]:visible';
         await browserService.fill(page, passwordSelector, password);
         
-        // Look for submit button
-        const submitSelector = 'button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Sign in")';
+        // Step 4: Click submit button
+        logger.debug('Step 4: Clicking submit button...');
+        const submitSelector = 'button:has-text("MASUK"), button[type="submit"]:visible';
         await browserService.click(page, submitSelector);
         
-        // Wait for navigation
-        await page.waitForTimeout(TIMEOUTS.LOGIN);
+        // Step 5: Wait for login to complete
+        logger.debug('Step 5: Waiting for navigation...');
+        try {
+          await page.waitForNavigation({ timeout: 10000, waitUntil: 'networkidle' });
+        } catch (error) {
+          // Navigation might not happen if using SPA, wait a bit
+          await page.waitForTimeout(3000);
+        }
         
-        // Check if login was successful (generic check)
+        // Step 6: Navigate to C-Sport section
+        logger.info('Step 6: Navigating to C-Sport section...');
+        
+        try {
+          // Click SPORTS menu
+          logger.debug('Looking for SPORTS menu...');
+          const sportsMenu = page.locator('text="SPORTS"').first();
+          await sportsMenu.waitFor({ state: 'visible', timeout: 10000 });
+          await sportsMenu.click();
+          await page.waitForTimeout(1000);
+          
+          // Click C-Sport submenu (might open in new tab)
+          logger.debug('Looking for C-Sport link...');
+          
+          // Set up listener for new tab/popup
+          const popupPromise = page.context().waitForEvent('page', { timeout: 15000 });
+          
+          // Try multiple selectors for C-Sport
+          const csportSelectors = [
+            'text="C-Sport"',
+            'a:has-text("C-Sport")',
+            'a[href*="csport"]',
+            'a[href*="C-Sport"]',
+          ];
+          
+          let csportClicked = false;
+          for (const selector of csportSelectors) {
+            try {
+              const csportLink = page.locator(selector).first();
+              await csportLink.waitFor({ state: 'visible', timeout: 3000 });
+              logger.info(`Found C-Sport link with selector: ${selector}`);
+              await csportLink.click();
+              csportClicked = true;
+              break;
+            } catch (error) {
+              logger.debug(`C-Sport link not found with selector: ${selector}`);
+            }
+          }
+          
+          if (!csportClicked) {
+            logger.warn('Could not find C-Sport link, skipping C-Sport navigation');
+          } else {
+            // Wait for popup/new tab
+            try {
+              logger.debug('Waiting for C-Sport popup/tab...');
+              const csportPage = await popupPromise;
+              await csportPage.waitForLoadState('networkidle', { timeout: 10000 });
+              logger.info('C-Sport page opened in new tab');
+              
+              // Get cookies from the C-Sport tab (this is important!)
+              const csportCookies = await csportPage.context().cookies();
+              logger.info(`Retrieved ${csportCookies.length} cookies from C-Sport tab`);
+              
+              // Close the C-Sport tab (we only needed the cookies)
+              await csportPage.close();
+            } catch (error) {
+              logger.debug('No popup detected or timeout, continuing...');
+            }
+          }
+        } catch (error) {
+          logger.warn(`Could not navigate to C-Sport section: ${error.message}`);
+          logger.debug('Continuing with login verification...');
+        }
+        
+        // Step 7: Verify login success
+        logger.debug('Step 7: Verifying login success...');
         const currentUrl = page.url();
         const isLoggedIn = !currentUrl.includes('login') && !currentUrl.includes('signin');
         
+        if (isLoggedIn) {
+          logger.info(`Login successful for ${provider.name}`);
+        } else {
+          logger.error(`Login failed for ${provider.name} - still on login page`);
+        }
+        
         return isLoggedIn;
       } catch (error) {
-        logger.warn(`Generic login failed, may need provider-specific logic: ${error.message}`);
+        logger.error(`Q88 login failed: ${error.message}`);
+        
+        // Take screenshot for debugging
+        try {
+          const screenshotPath = `/tmp/login_failure_${Date.now()}.png`;
+          await browserService.screenshot(page, screenshotPath);
+          logger.info(`Login failure screenshot saved: ${screenshotPath}`);
+        } catch (screenshotError) {
+          logger.debug('Could not take screenshot');
+        }
+        
         return false;
       }
     } catch (error) {
