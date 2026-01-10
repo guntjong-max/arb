@@ -251,6 +251,177 @@ class WorkerBot:
                 'error': str(e)
             }
     
+    def _handle_login(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle actual sportsbook login via Playwright"""
+        bookmaker = payload.get('bookmaker', '').lower()
+        username = payload.get('username')
+        password = payload.get('password')
+        
+        logger.info(f"Login request for {bookmaker} - username: {username}")
+        
+        if not username or not password:
+            return {'status': 'error', 'message': 'Missing credentials'}
+        
+        try:
+            # Create new page for this login
+            page = self.context.new_page()
+            
+            # Navigate to sportsbook
+            balance = None
+            if bookmaker == 'bet365':
+                balance = self._login_bet365(page, username, password)
+            elif bookmaker == 'pinnacle':
+                balance = self._login_pinnacle(page, username, password)
+            elif bookmaker == 'betfair':
+                balance = self._login_betfair(page, username, password)
+            else:
+                page.close()
+                return {'status': 'error', 'message': f'Unsupported bookmaker: {bookmaker}'}
+            
+            page.close()
+            
+            if balance is not None:
+                logger.info(f"Successfully logged in {bookmaker} - Balance: {balance}")
+                return {
+                    'status': 'success',
+                    'bookmaker': bookmaker,
+                    'username': username,
+                    'balance': balance,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {'status': 'error', 'message': 'Failed to extract balance'}
+        
+        except Exception as e:
+            logger.error(f"Login failed: {str(e)}", exc_info=True)
+            return {'status': 'error', 'message': str(e)}
+    
+    def _login_bet365(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Bet365 and extract balance"""
+        try:
+            logger.info("Navigating to Bet365...")
+            page.goto('https://www.bet365.com', wait_until='domcontentloaded', timeout=30000)
+            page.wait_for_timeout(2000)
+            
+            # Click login button
+            logger.info("Clicking login button...")
+            page.click('[data-testid="sbk-header-mobile-menu"]', timeout=10000)
+            page.wait_for_timeout(500)
+            page.click('text=Login', timeout=10000)
+            page.wait_for_timeout(1000)
+            
+            # Enter credentials
+            logger.info("Entering credentials...")
+            page.fill('[name="username"]', username, timeout=10000)
+            page.fill('[name="password"]', password, timeout=10000)
+            page.click('button[type="submit"]', timeout=10000)
+            
+            # Wait for page to load after login
+            logger.info("Waiting for dashboard...")
+            page.wait_for_url('**/*dashboard**', timeout=15000)
+            page.wait_for_timeout(2000)
+            
+            # Extract balance - adjust selector based on actual Bet365 HTML
+            logger.info("Extracting balance...")
+            balance_text = page.text_content('[data-testid="account-balance"]', timeout=10000)
+            
+            if balance_text:
+                # Parse balance value (e.g., "£1,234.56" → 1234.56)
+                match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+                if match:
+                    balance = float(match.group())
+                    logger.info(f"Bet365 balance extracted: {balance}")
+                    return balance
+            
+            logger.warning("Could not extract balance from Bet365")
+            return None
+        
+        except Exception as e:
+            logger.error(f"Bet365 login error: {str(e)}", exc_info=True)
+            return None
+    
+    def _login_pinnacle(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Pinnacle and extract balance"""
+        try:
+            logger.info("Navigating to Pinnacle...")
+            page.goto('https://www.pinnacle.com', wait_until='domcontentloaded', timeout=30000)
+            page.wait_for_timeout(2000)
+            
+            # Click login
+            logger.info("Clicking login button...")
+            page.click('text=Sign In', timeout=10000)
+            page.wait_for_timeout(1000)
+            
+            # Enter credentials
+            logger.info("Entering credentials...")
+            page.fill('input[type="email"]', username, timeout=10000)
+            page.fill('input[type="password"]', password, timeout=10000)
+            page.click('button[type="submit"]', timeout=10000)
+            
+            # Wait for dashboard
+            logger.info("Waiting for dashboard...")
+            page.wait_for_url('**/*dashboard**', timeout=15000)
+            page.wait_for_timeout(2000)
+            
+            # Extract balance - Pinnacle specific selector
+            logger.info("Extracting balance...")
+            balance_text = page.text_content('[data-testid="player-balance"]', timeout=10000)
+            
+            if balance_text:
+                match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+                if match:
+                    balance = float(match.group())
+                    logger.info(f"Pinnacle balance extracted: {balance}")
+                    return balance
+            
+            logger.warning("Could not extract balance from Pinnacle")
+            return None
+        
+        except Exception as e:
+            logger.error(f"Pinnacle login error: {str(e)}", exc_info=True)
+            return None
+    
+    def _login_betfair(self, page: Page, username: str, password: str) -> Optional[float]:
+        """Login to Betfair and extract balance"""
+        try:
+            logger.info("Navigating to Betfair...")
+            page.goto('https://www.betfair.com', wait_until='domcontentloaded', timeout=30000)
+            page.wait_for_timeout(2000)
+            
+            # Click login
+            logger.info("Clicking login button...")
+            page.click('button[data-testid="login-button"]', timeout=10000)
+            page.wait_for_timeout(1000)
+            
+            # Enter credentials
+            logger.info("Entering credentials...")
+            page.fill('input[autocomplete="username"]', username, timeout=10000)
+            page.fill('input[autocomplete="current-password"]', password, timeout=10000)
+            page.click('button[data-testid="login-submit"]', timeout=10000)
+            
+            # Wait for dashboard
+            logger.info("Waiting for account page...")
+            page.wait_for_url('**/*my-accounts**', timeout=15000)
+            page.wait_for_timeout(2000)
+            
+            # Extract balance
+            logger.info("Extracting balance...")
+            balance_text = page.text_content('[data-testid="account-balance"]', timeout=10000)
+            
+            if balance_text:
+                match = re.search(r'[\d,]+\.?\d*', balance_text.replace(',', ''))
+                if match:
+                    balance = float(match.group())
+                    logger.info(f"Betfair balance extracted: {balance}")
+                    return balance
+            
+            logger.warning("Could not extract balance from Betfair")
+            return None
+        
+        except Exception as e:
+            logger.error(f"Betfair login error: {str(e)}", exc_info=True)
+            return None
+    
     def _handle_place_bet(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Handle place bet job (stub)"""
         logger.info(f"Place bet job (stub): {payload}")
