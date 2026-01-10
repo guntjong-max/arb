@@ -265,18 +265,84 @@ class WorkerBot:
             'note': 'Full implementation pending in Phase 3'
         }
     
-    def _handle_check_odds(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle check odds job (stub)"""
-        logger.info(f"Check odds job (stub): {payload}")
+    def convert_odds_to_decimal(self, odds_value, format_type='decimal'):
+        """
+        Convert any odds format to decimal (European) format.
         
-        # TODO: Implement actual odds checking logic
-        # This is a placeholder for Phase 3
+        Args:
+            odds_value: Odds value (float, str, or int)
+            format_type: 'decimal', 'fractional', 'american'
+        
+        Returns:
+            float: Decimal odds (always > 1.0)
+        
+        Examples:
+            convert_odds_to_decimal(1.95) → 1.95
+            convert_odds_to_decimal("19/20", "fractional") → 1.95
+            convert_odds_to_decimal(-105, "american") → 1.952
+        """
+        try:
+            if format_type == 'decimal':
+                return float(odds_value)
+            
+            elif format_type == 'fractional':
+                # Handle "19/20" string format
+                if isinstance(odds_value, str) and '/' in odds_value:
+                    parts = odds_value.split('/')
+                    numerator = float(parts[0])
+                    denominator = float(parts[1])
+                    return (numerator / denominator) + 1
+                else:
+                    return float(odds_value)
+            
+            elif format_type == 'american':
+                odds_value = float(odds_value)
+                if odds_value < 0:
+                    # Negative odds
+                    return 1 + (100 / abs(odds_value))
+                else:
+                    # Positive odds
+                    return 1 + (odds_value / 100)
+            
+            return float(odds_value)
+            
+        except Exception as e:
+            logger.error(f"Odds conversion failed: {e} for value={odds_value}, format={format_type}")
+            raise
+    
+    def _handle_check_odds(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Check and normalize odds to decimal format"""
+        bookmaker = payload.get('bookmaker')
+        odds_data = payload.get('odds', {})
+        
+        logger.info(f"Check odds job for {bookmaker}: {odds_data}")
+        
+        # Convert all odds to decimal format
+        normalized_odds = {}
+        for market, odds_value in odds_data.items():
+            try:
+                # Detect format (for now assume decimal)
+                # In production, detect based on bookmaker API response
+                format_type = payload.get('format', 'decimal')
+                decimal_odds = self.convert_odds_to_decimal(odds_value, format_type)
+                
+                # Validate: must be > 1.0
+                if decimal_odds <= 1.0:
+                    logger.warning(f"Invalid odds {odds_value} → {decimal_odds} for {market}")
+                    continue
+                
+                logger.info(f"Converted {market}: {odds_value} ({format_type}) → {decimal_odds} (decimal)")
+                normalized_odds[market] = decimal_odds
+                
+            except Exception as e:
+                logger.error(f"Failed to convert odds for {market}: {e}")
+                continue
         
         return {
             'success': True,
-            'message': 'Odds checking (stub - not implemented)',
-            'payload': payload,
-            'note': 'Full implementation pending in Phase 3'
+            'bookmaker': bookmaker,
+            'odds': normalized_odds,
+            'format': 'decimal'
         }
     
     def _handle_login(self, payload: Dict[str, Any]) -> Dict[str, Any]:
